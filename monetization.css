@@ -255,6 +255,7 @@
 
 /* Revenue Dashboard */
 .revenue-dashboard {
+    display: none !important;
     position: fixed;
     top: 0;
     right: -400px;
@@ -268,6 +269,9 @@
 }
 
 .revenue-dashboard.show {
+    .revenue-dashboard.show {
+    display: none !important;
+}
     right: 0;
 }
 
