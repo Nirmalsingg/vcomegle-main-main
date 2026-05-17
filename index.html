@@ -52,6 +52,11 @@
                     <h2>Welcome to VComingle</h2>
                     <p>Meet strangers randomly — video with text, or text-only (no camera).</p>
                     
+                    <div class="mobile-notice">
+                        <span class="mobile-notice-icon">📱</span>
+                        <span class="mobile-notice-text">Enable desktop site for full screen video chat</span>
+                    </div>
+                    
                     <div class="preferences">
                         <div class="preference-group chat-mode-group">
                             <span class="preference-label">How do you want to chat?</span>
@@ -86,6 +91,10 @@
 
             <!-- Chat Screen -->
             <div id="chatScreen" class="screen chat-screen hidden">
+                <div class="mobile-notice">
+                    <span class="mobile-notice-icon">📱</span>
+                    <span class="mobile-notice-text">Enable desktop site for full screen video chat</span>
+                </div>
                 <div class="video-container">
                     <div class="video-wrapper">
                         <video id="localVideo" autoplay muted playsinline class="video-local"></video>
@@ -213,6 +222,28 @@
 <!-- <script src="revenue-dashboard.js"></script> -->
 <!-- <script src="premium-functions.js"></script> -->
     <script src="app.js"></script>
+    
+    <script>
+        // Detect mobile device and show notice
+        function isMobile() {
+            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth <= 1024;
+        }
+        
+        function showMobileNotice() {
+            if (isMobile()) {
+                const notices = document.querySelectorAll('.mobile-notice');
+                notices.forEach(notice => {
+                    notice.style.display = 'flex';
+                    notice.style.alignItems = 'center';
+                    notice.style.justifyContent = 'center';
+                });
+            }
+        }
+        
+        // Run on page load and resize
+        window.addEventListener('load', showMobileNotice);
+        window.addEventListener('resize', showMobileNotice);
+    </script>
     
     <script>
         function showPremiumUpgrade() {
