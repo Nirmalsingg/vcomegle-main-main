@@ -436,6 +436,7 @@ body {
     border-radius: 12px;
     overflow: hidden;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    aspect-ratio: 1 / 1;
 }
 
 .video-local,
@@ -647,9 +648,19 @@ body {
     }
     
     .video-container {
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: 1fr;
         height: 80%;
         gap: 0.5rem;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .video-wrapper:first-child {
+        order: 2;
+    }
+    
+    .video-wrapper:last-child {
+        order: 1;
     }
     
     .controls {
