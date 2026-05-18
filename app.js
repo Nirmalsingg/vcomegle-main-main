@@ -172,11 +172,11 @@ class VComingleApp {
                 const modeHint = this.textOnly ? 'Text only' : 'Video + text';
                 if (n === 0) {
                     this.setConnectingDetail(
-                        `<strong>${modeHint}:</strong> You’re in the queue alone. Open this site on another phone or PC, choose <strong>${modeHint}</strong>, and tap <strong>Start chatting</strong> at the same time.`
+                        `<strong>${modeHint}:</strong> Waiting for a stranger to connect...`
                     );
                 } else {
                     this.setConnectingDetail(
-                        `<strong>${modeHint}:</strong> ${n} other user(s) waiting — matching soon…`
+                        `<strong>${modeHint}:</strong> Waiting for a stranger to connect...`
                     );
                 }
             }
