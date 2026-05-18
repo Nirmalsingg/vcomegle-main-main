@@ -37,10 +37,11 @@
     background: white;
     border: 1px solid #e9ecef;
     border-radius: 8px;
-    padding: 10px;
+    padding: 8px;
     box-shadow: none;
     display: none;
-    margin: 0.25rem 0 0;
+    margin: 0.5rem 0 0;
+    flex: 0 0 auto;
 }
 
 .virtual-gifts-panel.show {
@@ -48,14 +49,15 @@
 }
 
 .virtual-gifts-panel h4 {
-    margin: 0 0 8px;
-    font-size: 0.95rem;
+    margin: 0 0 6px;
+    font-size: 0.85rem;
     color: #333;
+    text-align: center;
 }
 
 .gift-options {
     display: flex;
-    gap: 8px;
+    gap: 6px;
     justify-content: center;
     flex-wrap: wrap;
 }
@@ -65,7 +67,7 @@
     align-items: center;
     gap: 5px;
     margin: 0;
-    padding: 7px 10px;
+    padding: 5px 8px;
     border: 2px solid #f0f0f0;
     border-radius: 8px;
     background: #fff;
@@ -80,12 +82,12 @@
 }
 
 .gift-icon {
-    font-size: 20px;
+    font-size: 18px;
     line-height: 1;
 }
 
 .gift-cost {
-    font-size: 12px;
+    font-size: 11px;
     color: #666;
 }
 
