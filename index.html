@@ -127,10 +127,11 @@
                     <button id="reportButton" class="btn btn-warning">Report</button>
                     <button id="toggleVideo" class="btn btn-control">📹</button>
                     <button id="toggleAudio" class="btn btn-control">🎤</button>
+                    <button id="toggleGifts" class="btn btn-control gift-toggle" type="button" aria-expanded="false" aria-controls="virtualGiftsPanel">🎁 Gifts</button>
                 </div>
 
                 <!-- Virtual Gifts Panel -->
-                <div class="virtual-gifts-panel" id="virtualGiftsPanel">
+                <div class="virtual-gifts-panel" id="virtualGiftsPanel" aria-hidden="true">
                     <h4>Send Virtual Gifts</h4>
                     <div class="gift-options">
                         <button type="button" class="gift-item" onclick="sendGift('heart')" aria-label="Send Heart gift">

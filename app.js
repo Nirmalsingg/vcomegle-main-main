@@ -38,6 +38,7 @@ class VComingleApp {
         this.reportBtn = document.getElementById('reportButton');
         this.toggleVideoBtn = document.getElementById('toggleVideo');
         this.toggleAudioBtn = document.getElementById('toggleAudio');
+        this.toggleGiftsBtn = document.getElementById('toggleGifts');
         this.findNewBtn = document.getElementById('findNew');
         this.goHomeBtn = document.getElementById('goHome');
 
@@ -72,6 +73,9 @@ class VComingleApp {
         this.reportBtn.addEventListener('click', () => this.reportUser());
         this.toggleVideoBtn.addEventListener('click', () => this.toggleVideo());
         this.toggleAudioBtn.addEventListener('click', () => this.toggleAudio());
+        if (this.toggleGiftsBtn) {
+            this.toggleGiftsBtn.addEventListener('click', () => this.toggleGifts());
+        }
 
         this.findNewBtn.addEventListener('click', () => this.startChat());
         this.goHomeBtn.addEventListener('click', () => this.goHome());
@@ -568,6 +572,22 @@ class VComingleApp {
         setTimeout(() => animation.remove(), 3000);
     }
 
+    setGiftsOpen(isOpen) {
+        if (this.virtualGiftsPanel) {
+            this.virtualGiftsPanel.classList.toggle('show', isOpen);
+            this.virtualGiftsPanel.setAttribute('aria-hidden', String(!isOpen));
+        }
+        if (this.toggleGiftsBtn) {
+            this.toggleGiftsBtn.classList.toggle('active', isOpen);
+            this.toggleGiftsBtn.setAttribute('aria-expanded', String(isOpen));
+        }
+    }
+
+    toggleGifts() {
+        const isOpen = !!(this.virtualGiftsPanel && this.virtualGiftsPanel.classList.contains('show'));
+        this.setGiftsOpen(!isOpen);
+    }
+
     addMessage(htmlText, sender) {
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${sender}`;
@@ -693,9 +713,7 @@ class VComingleApp {
                 screen.classList.add('hidden');
             }
         });
-        if (this.virtualGiftsPanel) {
-            this.virtualGiftsPanel.classList.toggle('show', screenId === 'chatScreen');
-        }
+        if (screenId !== 'chatScreen') this.setGiftsOpen(false);
     }
 
     updateOnlineCount() {

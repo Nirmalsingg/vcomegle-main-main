@@ -40,7 +40,8 @@
     padding: 8px;
     box-shadow: none;
     display: none;
-    margin: 0.5rem 0 0;
+    margin: 0.4rem auto 0;
+    max-width: 760px;
     flex: 0 0 auto;
 }
 
@@ -60,6 +61,11 @@
     gap: 6px;
     justify-content: center;
     flex-wrap: wrap;
+}
+
+.gift-toggle.active {
+    border-color: #667eea;
+    background: #eef1ff;
 }
 
 .gift-item {
