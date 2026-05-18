@@ -44,6 +44,7 @@ class VComingleApp {
         this.chatModeVideo = document.getElementById('chatModeVideo');
         this.chatModeText = document.getElementById('chatModeText');
         this.interestsInput = document.getElementById('interests');
+        this.virtualGiftsPanel = document.getElementById('virtualGiftsPanel');
 
         this.onlineCount = document.getElementById('onlineCount');
         this.connectingDetail = document.getElementById('connectingDetail');
@@ -191,6 +192,10 @@ class VComingleApp {
 
         this.socket.on('chat-message', (data) => {
             this.addMessage(this.escapeHtml(data.message), 'stranger');
+        });
+
+        this.socket.on('virtual-gift', (data) => {
+            this.receiveGift(data && data.giftType);
         });
 
         this.socket.on('stranger-disconnected', () => {
@@ -517,6 +522,52 @@ class VComingleApp {
         }, 800 + Math.random() * 1200);
     }
 
+    getGift(giftType) {
+        const gifts = {
+            heart: { icon: '❤️', name: 'Heart' },
+            rose: { icon: '🌹', name: 'Rose' },
+            star: { icon: '⭐', name: 'Star' },
+            diamond: { icon: '💎', name: 'Diamond' },
+            crown: { icon: '👑', name: 'Crown' }
+        };
+        return gifts[giftType] || null;
+    }
+
+    sendGift(giftType) {
+        const gift = this.getGift(giftType);
+        if (!gift) return;
+
+        this.showGiftAnimation(gift, 'Sent');
+        this.addSystemMessage(`You sent a ${gift.name} gift.`);
+
+        if (this.socket && this.socket.connected && this.currentRoom) {
+            this.socket.emit('virtual-gift', { roomId: this.currentRoom, giftType });
+            return;
+        }
+
+        setTimeout(() => this.receiveGift(giftType), 900);
+    }
+
+    receiveGift(giftType) {
+        const gift = this.getGift(giftType);
+        if (!gift) return;
+        this.showGiftAnimation(gift, 'Received');
+        this.addSystemMessage(`Stranger sent you a ${gift.name} gift.`);
+    }
+
+    showGiftAnimation(gift, label) {
+        const animation = document.createElement('div');
+        animation.className = 'gift-animation';
+        animation.innerHTML = `
+            <div class="gift-content">
+                <div class="gift-icon">${gift.icon}</div>
+                <div class="gift-name">${this.escapeHtml(label)} ${this.escapeHtml(gift.name)}</div>
+            </div>
+        `;
+        document.body.appendChild(animation);
+        setTimeout(() => animation.remove(), 3000);
+    }
+
     addMessage(htmlText, sender) {
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${sender}`;
@@ -642,6 +693,9 @@ class VComingleApp {
                 screen.classList.add('hidden');
             }
         });
+        if (this.virtualGiftsPanel) {
+            this.virtualGiftsPanel.classList.toggle('show', screenId === 'chatScreen');
+        }
     }
 
     updateOnlineCount() {
@@ -667,6 +721,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (window.vcomegleApp) window.vcomegleApp.cleanupSession();
     });
 });
+
+function sendGift(giftType) {
+    if (window.vcomegleApp) {
+        window.vcomegleApp.sendGift(giftType);
+    }
+}
 
 window.addEventListener('error', (event) => {
     console.error('Global error:', event.error);

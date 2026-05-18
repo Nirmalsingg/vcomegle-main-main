@@ -140,6 +140,18 @@ io.on('connection', (socket) => {
         }
     });
 
+    socket.on('virtual-gift', (data) => {
+        const { roomId, giftType } = data;
+        const room = rooms.get(roomId);
+
+        if (room) {
+            const otherUser = room.users.find(u => u.id !== socket.id);
+            if (otherUser) {
+                otherUser.socket.emit('virtual-gift', { giftType, from: socket.id });
+            }
+        }
+    });
+
     // User actions
     socket.on('next', () => {
         leaveRoom(socket.id);

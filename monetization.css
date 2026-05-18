@@ -269,9 +269,7 @@
 }
 
 .revenue-dashboard.show {
-    .revenue-dashboard.show {
-    display: none !important;
-}
+    display: block !important;
     right: 0;
 }
 
