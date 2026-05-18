@@ -47,17 +47,15 @@ io.on('connection', (socket) => {
     // User looking for a match
     socket.on('find-match', (data) => {
         const { textOnly, interests } = data;
+        removeWaitingUser(socket.id);
         const user = {
             id: socket.id,
-            textOnly,
+            textOnly: !!textOnly,
             interests: interests ? interests.split(',').map(i => i.trim()) : [],
             socket: socket
         };
 
         users.set(socket.id, user);
-
-        const dup = waitingUsers.findIndex((w) => w.id === socket.id);
-        if (dup !== -1) waitingUsers.splice(dup, 1);
 
         // Find a matching user
         const match = findMatch(user);
@@ -68,8 +66,7 @@ io.on('connection', (socket) => {
             const othersWaiting = waitingUsers.filter(
                 (w) => w.textOnly === user.textOnly && w.id !== user.id
             ).length;
-            user.addedTime = Date.now();
-            waitingUsers.push(user);
+            queueUser(user);
             socket.emit('waiting', { othersWaiting });
             console.log(`⏳ User ${socket.id} added to waiting list (Total: ${waitingUsers.length}, same-mode ahead: ${othersWaiting})`);
         }
@@ -155,6 +152,7 @@ io.on('connection', (socket) => {
     // User actions
     socket.on('next', () => {
         leaveRoom(socket.id);
+        removeWaitingUser(socket.id);
 
         const user = users.get(socket.id);
         if (!user) return;
@@ -167,8 +165,7 @@ io.on('connection', (socket) => {
             const othersWaiting = waitingUsers.filter(
                 (w) => w.textOnly === user.textOnly && w.id !== user.id
             ).length;
-            user.addedTime = Date.now();
-            waitingUsers.push(user);
+            queueUser(user);
             socket.emit('waiting', { othersWaiting });
         }
     });
@@ -201,12 +198,7 @@ io.on('connection', (socket) => {
         const user = users.get(socket.id);
         if (user) {
             leaveRoom(socket.id);
-            
-            // Remove from waiting list
-            const waitingIndex = waitingUsers.indexOf(user);
-            if (waitingIndex > -1) {
-                waitingUsers.splice(waitingIndex, 1);
-            }
+            removeWaitingUser(socket.id);
             
             users.delete(socket.id);
         }
@@ -215,9 +207,14 @@ io.on('connection', (socket) => {
 
 const findMatch = (user) => {
     console.log(`Finding match for user ${user.id}, textOnly: ${user.textOnly}`);
+    pruneWaitingUsers();
 
     const idx = waitingUsers.findIndex(
-        (w) => w.id !== user.id && w.textOnly === user.textOnly
+        (w) =>
+            w.id !== user.id &&
+            w.textOnly === user.textOnly &&
+            w.socket.connected &&
+            !isUserInRoom(w.id)
     );
 
     if (idx === -1) {
@@ -229,6 +226,37 @@ const findMatch = (user) => {
     console.log(`Matched ${user.id} with ${match.id}`);
     return match;
 };
+
+function queueUser(user) {
+    if (!user || !user.socket.connected || isUserInRoom(user.id)) return;
+    removeWaitingUser(user.id);
+    user.addedTime = Date.now();
+    waitingUsers.push(user);
+}
+
+function removeWaitingUser(userId) {
+    let idx = waitingUsers.findIndex((w) => w.id === userId);
+    while (idx !== -1) {
+        waitingUsers.splice(idx, 1);
+        idx = waitingUsers.findIndex((w) => w.id === userId);
+    }
+}
+
+function pruneWaitingUsers() {
+    for (let i = waitingUsers.length - 1; i >= 0; i--) {
+        const user = waitingUsers[i];
+        if (!user.socket.connected || isUserInRoom(user.id)) {
+            waitingUsers.splice(i, 1);
+        }
+    }
+}
+
+function isUserInRoom(userId) {
+    for (const room of rooms.values()) {
+        if (room.users.some((u) => u.id === userId)) return true;
+    }
+    return false;
+}
 
 function pairUsersInRoom(userA, userB, socketA, socketB) {
     const roomId = generateRoomId();
@@ -260,6 +288,7 @@ function generateRoomId() {
 }
 
 function leaveRoom(userId) {
+    removeWaitingUser(userId);
     // Find and remove user from any room
     for (const [roomId, room] of rooms.entries()) {
         const userIndex = room.users.findIndex(u => u.id === userId);
@@ -269,8 +298,6 @@ function leaveRoom(userId) {
             
             if (otherUser) {
                 otherUser.socket.emit('stranger-disconnected');
-                otherUser.addedTime = Date.now();
-                waitingUsers.push(otherUser);
             }
             
             rooms.delete(roomId);

@@ -113,9 +113,7 @@ class VComingleApp {
             }
 
             await this.connectToSignalingServer();
-            this.setConnectingDetail(
-                'Looking for a stranger… Use the <strong>same</strong> mode (Video or Text only) on both devices.'
-            );
+            this.setConnectingDetail('Waiting for a stranger to connect...');
             this.findMatch();
         } catch (error) {
             console.error('Error starting chat:', error);
@@ -168,17 +166,7 @@ class VComingleApp {
         this.socket.on('waiting', (payload) => {
             this.showScreen('connectingScreen');
             if (payload && typeof payload.othersWaiting === 'number') {
-                const n = payload.othersWaiting;
-                const modeHint = this.textOnly ? 'Text only' : 'Video + text';
-                if (n === 0) {
-                    this.setConnectingDetail(
-                        `<strong>${modeHint}:</strong> Waiting for a stranger to connect...`
-                    );
-                } else {
-                    this.setConnectingDetail(
-                        `<strong>${modeHint}:</strong> Waiting for a stranger to connect...`
-                    );
-                }
+                this.setConnectingDetail('Waiting for a stranger to connect...');
             }
         });
 
