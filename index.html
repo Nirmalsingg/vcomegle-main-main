@@ -116,7 +116,7 @@
 
                 <!-- Message Input -->
                 <div class="message-input-container">
-                    <input type="text" id="messageInput" placeholder="Type a message..." maxlength="200">
+                    <input type="text" id="messageInput" placeholder="Type a message during video or text chat..." maxlength="200">
                     <button id="sendMessage" class="btn btn-send">Send</button>
                 </div>
 
@@ -127,6 +127,33 @@
                     <button id="reportButton" class="btn btn-warning">Report</button>
                     <button id="toggleVideo" class="btn btn-control">📹</button>
                     <button id="toggleAudio" class="btn btn-control">🎤</button>
+                </div>
+
+                <!-- Virtual Gifts Panel -->
+                <div class="virtual-gifts-panel" id="virtualGiftsPanel">
+                    <h4>Send Virtual Gifts</h4>
+                    <div class="gift-options">
+                        <button type="button" class="gift-item" onclick="sendGift('heart')" aria-label="Send Heart gift">
+                            <span class="gift-icon">❤️</span>
+                            <span class="gift-cost">Heart</span>
+                        </button>
+                        <button type="button" class="gift-item" onclick="sendGift('rose')" aria-label="Send Rose gift">
+                            <span class="gift-icon">🌹</span>
+                            <span class="gift-cost">Rose</span>
+                        </button>
+                        <button type="button" class="gift-item" onclick="sendGift('star')" aria-label="Send Star gift">
+                            <span class="gift-icon">⭐</span>
+                            <span class="gift-cost">Star</span>
+                        </button>
+                        <button type="button" class="gift-item" onclick="sendGift('diamond')" aria-label="Send Diamond gift">
+                            <span class="gift-icon">💎</span>
+                            <span class="gift-cost">Diamond</span>
+                        </button>
+                        <button type="button" class="gift-item" onclick="sendGift('crown')" aria-label="Send Crown gift">
+                            <span class="gift-icon">👑</span>
+                            <span class="gift-cost">Crown</span>
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -149,31 +176,6 @@
                 </div>
             </div>
         </main>
-
-        <!-- Virtual Gifts Panel -->
-        <div class="virtual-gifts-panel" id="virtualGiftsPanel">
-            <h4>Send Virtual Gifts</h4>
-            <div class="gift-item" onclick="sendGift('heart')">
-                <div class="gift-icon">❤️</div>
-                <div class="gift-cost">Heart</div>
-            </div>
-            <div class="gift-item" onclick="sendGift('rose')">
-                <div class="gift-icon">🌹</div>
-                <div class="gift-cost">Rose</div>
-            </div>
-            <div class="gift-item" onclick="sendGift('star')">
-                <div class="gift-icon">⭐</div>
-                <div class="gift-cost">Star</div>
-            </div>
-            <div class="gift-item" onclick="sendGift('diamond')">
-                <div class="gift-icon">💎</div>
-                <div class="gift-cost">Diamond</div>
-            </div>
-            <div class="gift-item" onclick="sendGift('crown')">
-                <div class="gift-icon">👑</div>
-                <div class="gift-cost">Crown</div>
-            </div>
-        </div>
 
         <!-- Revenue Dashboard -->
         <<!-- div class="revenue-dashboard" id="revenueDashboard" style="display:none;"></div>
