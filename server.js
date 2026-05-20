@@ -46,12 +46,14 @@ io.on('connection', (socket) => {
 
     // User looking for a match
     socket.on('find-match', (data) => {
-        const { textOnly, interests } = data;
+        const { textOnly, interests, selfGender, partnerGender } = data || {};
         removeWaitingUser(socket.id);
         const user = {
             id: socket.id,
             textOnly: !!textOnly,
             interests: interests ? interests.split(',').map(i => i.trim()) : [],
+            selfGender: selfGender === 'male' || selfGender === 'female' ? selfGender : 'unspecified',
+            partnerGender: partnerGender === 'male' || partnerGender === 'female' ? partnerGender : 'random',
             socket: socket
         };
 
@@ -205,6 +207,20 @@ io.on('connection', (socket) => {
     });
 });
 
+function gendersCompatible(a, b) {
+    const aWants = a && a.partnerGender ? a.partnerGender : 'random';
+    const bWants = b && b.partnerGender ? b.partnerGender : 'random';
+    const aIs = a && a.selfGender ? a.selfGender : 'unspecified';
+    const bIs = b && b.selfGender ? b.selfGender : 'unspecified';
+
+    const aOk =
+        aWants === 'random' || (bIs !== 'unspecified' && bIs === aWants);
+    const bOk =
+        bWants === 'random' || (aIs !== 'unspecified' && aIs === bWants);
+
+    return aOk && bOk;
+}
+
 const findMatch = (user) => {
     console.log(`Finding match for user ${user.id}, textOnly: ${user.textOnly}`);
     pruneWaitingUsers();
@@ -214,7 +230,8 @@ const findMatch = (user) => {
             w.id !== user.id &&
             w.textOnly === user.textOnly &&
             w.socket.connected &&
-            !isUserInRoom(w.id)
+            !isUserInRoom(w.id) &&
+            gendersCompatible(user, w)
     );
 
     if (idx === -1) {

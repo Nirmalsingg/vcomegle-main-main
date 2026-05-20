@@ -45,6 +45,8 @@ class VComingleApp {
         this.chatModeVideo = document.getElementById('chatModeVideo');
         this.chatModeText = document.getElementById('chatModeText');
         this.interestsInput = document.getElementById('interests');
+        this.selfGenderSelect = document.getElementById('selfGender');
+        this.partnerGenderSelect = document.getElementById('partnerGender');
         this.virtualGiftsPanel = document.getElementById('virtualGiftsPanel');
 
         this.onlineCount = document.getElementById('onlineCount');
@@ -83,6 +85,32 @@ class VComingleApp {
 
     syncChatModeFromUI() {
         this.textOnly = !!(this.chatModeText && this.chatModeText.checked);
+    }
+
+    hasPremiumGenderFilter() {
+        try {
+            return (
+                typeof vcomingleMonetization !== 'undefined' &&
+                vcomingleMonetization &&
+                typeof vcomingleMonetization.hasGenderFilter === 'function' &&
+                vcomingleMonetization.hasGenderFilter()
+            );
+        } catch (_) {
+            return false;
+        }
+    }
+
+    getSelfGender() {
+        const v = (this.selfGenderSelect && this.selfGenderSelect.value) || 'unspecified';
+        if (v === 'male' || v === 'female') return v;
+        return 'unspecified';
+    }
+
+    getPartnerGenderPreference() {
+        if (!this.hasPremiumGenderFilter()) return 'random';
+        const v = (this.partnerGenderSelect && this.partnerGenderSelect.value) || 'random';
+        if (v === 'male' || v === 'female') return v;
+        return 'random';
     }
 
     applyChatLayout() {
@@ -322,13 +350,20 @@ class VComingleApp {
         if (this.socket && this.socket.connected) {
             this.socket.emit('find-match', {
                 textOnly: this.textOnly,
-                interests
+                interests,
+                selfGender: this.getSelfGender(),
+                partnerGender: this.getPartnerGenderPreference()
             });
             return;
         }
         if (this.isDemoModeEnabled()) {
             this.fallbackToDemoMode();
-            this.socket.emit('find-match', { textOnly: this.textOnly, interests });
+            this.socket.emit('find-match', {
+                textOnly: this.textOnly,
+                interests,
+                selfGender: this.getSelfGender(),
+                partnerGender: this.getPartnerGenderPreference()
+            });
             return;
         }
         this.showNotification('Not connected to the chat server. Go back and try again.', 'error');

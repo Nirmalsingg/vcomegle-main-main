@@ -41,23 +41,13 @@
                 <h1>VComingle</h1>
                 <span class="tagline">Talk to strangers</span>
             </div>
-            <div class="header-buttons">
-               <!--
-<button id="premiumBtn" class="premium-btn" onclick="showPremiumUpgrade()">
-    Upgrade to Premium
-</button>
-
-<button id="revenueBtn" class="revenue-btn" onclick="openRevenueDashboard()">
-    💰 Revenue
-</button>
-
-<button id="withdrawBtn" class="withdraw-btn" onclick="withdrawFunds()">
-    💸 Withdraw
-</button>
--->
-            </div>
-            <div class="user-info">
-               <!-- <span class="online-count">Online: <span id="onlineCount">0</span></span> --!>
+            <div class="header-actions">
+                <button id="premiumBtn" class="premium-btn" type="button">
+                    Premium
+                </button>
+                <div class="user-info">
+                    <!-- <span class="online-count">Online: <span id="onlineCount">0</span></span> -->
+                </div>
             </div>
         </header>
 
@@ -89,6 +79,28 @@
                         <div class="preference-group">
                             <label for="interests">Add your interests (optional)</label>
                             <input type="text" id="interests" placeholder="music, gaming, movies...">
+                        </div>
+                        <div class="preference-group">
+                            <label for="selfGender">Your gender (optional)</label>
+                            <select id="selfGender">
+                                <option value="unspecified" selected>Prefer not to say</option>
+                                <option value="male">Male</option>
+                                <option value="female">Female</option>
+                            </select>
+                        </div>
+                        <div class="preference-group premium-only">
+                            <div class="premium-label-row">
+                                <label for="partnerGender">Chat with</label>
+                                <button type="button" class="premium-chip" id="genderPremiumChip">Premium</button>
+                            </div>
+                            <select id="partnerGender" disabled>
+                                <option value="random" selected>Random</option>
+                                <option value="male">Male</option>
+                                <option value="female">Female</option>
+                            </select>
+                            <div class="premium-hint" id="genderPremiumHint">
+                                Upgrade to Premium to unlock the gender filter.
+                            </div>
                         </div>
                     </div>
 
@@ -190,35 +202,7 @@
             </div>
         </main>
 
-        <!-- Revenue Dashboard -->
-        <<!-- div class="revenue-dashboard" id="revenueDashboard" style="display:none;"></div>
-            <div class="dashboard-header">
-                <h3>Revenue Dashboard</h3>
-                <button class="dashboard-close" onclick="toggleRevenueDashboard()">×</button>
-            </div> -->
-           <!--  <div class="dashboard-content">
-                <div class="stat-card">
-                    <h4>Total Revenue</h4>
-                    <div class="stat-value" id="totalRevenue">$0</div>
-                </div>
-                <div class="stat-card">
-                    <h4>Premium Users</h4>
-                    <div class="stat-value" id="premiumUsers">0</div>
-                </div>
-                <div class="stat-card">
-                    <h4>VIP Users</h4>
-                    <div class="stat-value" id="vipUsers">0</div>
-                </div>
-                <div class="stat-card">
-                    <h4>Virtual Gifts Revenue</h4>
-                    <div class="stat-value" id="giftsRevenue">$0</div>
-                </div>
-                <div class="stat-card">
-                    <h4>Total Active Users</h4>
-                    <div class="stat-value" id="totalUsers">0</div>
-                </div>
-            </div>
-        </div>
+        <!-- Revenue Dashboard (currently unused) -->
 
         <!-- Footer -->
         <footer class="footer">
@@ -233,10 +217,8 @@
         </footer>
     </div>
 
-   <!-- <script src="monetization.js"></script> -->
-<!-- <script src="payment-system.js"></script> -->
-<!-- <script src="revenue-dashboard.js"></script> -->
-<!-- <script src="premium-functions.js"></script> -->
+    <script src="monetization.js"></script>
+    <script src="payment-system.js"></script>
     <script src="app.js"></script>
     
     <script>
@@ -264,39 +246,49 @@
     <script>
         function showPremiumUpgrade() {
             try {
-                if (typeof paymentSystem !== 'undefined') {
+                if (typeof paymentSystem !== 'undefined' && paymentSystem && paymentSystem.showPaymentModal) {
                     paymentSystem.showPaymentModal('premium', 9.99);
                 } else {
-                    console.warn('Payment system not loaded');
+                    window.open('premium-features.html', '_blank');
                 }
             } catch (error) {
                 console.error('Premium upgrade error:', error);
             }
         }
 
-        function openRevenueDashboard() {
-            try {
-                if (typeof revenueDashboard !== 'undefined') {
-                    revenueDashboard.initializeDashboard();
-                } else {
-                    console.warn('Revenue dashboard not loaded');
+        function applyPremiumUI() {
+            const premiumBtn = document.getElementById('premiumBtn');
+            const partnerGender = document.getElementById('partnerGender');
+            const chip = document.getElementById('genderPremiumChip');
+            const hint = document.getElementById('genderPremiumHint');
+
+            const hasGender =
+                typeof vcomingleMonetization !== 'undefined' &&
+                vcomingleMonetization &&
+                typeof vcomingleMonetization.hasGenderFilter === 'function' &&
+                vcomingleMonetization.hasGenderFilter();
+
+            if (premiumBtn) {
+                premiumBtn.addEventListener('click', showPremiumUpgrade);
+                if (hasGender) {
+                    premiumBtn.textContent =
+                        vcomingleMonetization.userTier === 'vip' ? 'VIP' : 'Premium';
                 }
-            } catch (error) {
-                console.error('Revenue dashboard error:', error);
+            }
+
+            if (partnerGender) {
+                partnerGender.disabled = !hasGender;
+            }
+            if (hint) {
+                hint.style.display = hasGender ? 'none' : 'block';
+            }
+            if (chip) {
+                chip.style.display = hasGender ? 'none' : 'inline-flex';
+                chip.addEventListener('click', showPremiumUpgrade);
             }
         }
 
-        function withdrawFunds() {
-            try {
-                if (typeof revenueDashboard !== 'undefined') {
-                    revenueDashboard.withdrawFunds();
-                } else {
-                    console.warn('Revenue dashboard not loaded');
-                }
-            } catch (error) {
-                console.error('Withdraw error:', error);
-            }
-        }
+        window.addEventListener('load', applyPremiumUI);
     </script>
     <script type="module">
     import { inject } from 'https://unpkg.com/@vercel/analytics/dist/index.mjs';
@@ -304,4 +296,3 @@
   </script>
 </body>
 </html>
- -->
