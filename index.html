@@ -108,6 +108,12 @@
                             <div class="premium-hint" id="genderPremiumHint">
                                 Upgrade to Premium to unlock the gender filter.
                             </div>
+                            <div class="ad-unlock-row hidden" id="genderAdUnlockRow">
+                                <button type="button" class="btn btn-secondary btn-ad-unlock" id="genderAdUnlockBtn">
+                                    Watch Ad (2 min unlock)
+                                </button>
+                                <div class="ad-unlock-status" id="genderAdUnlockStatus"></div>
+                            </div>
                         </div>
                     </div>
 
@@ -224,8 +230,38 @@
         </footer>
     </div>
 
+    <!-- Ad unlock modal (paste Monetag/Adsterra/PropellerAds code into the slot below) -->
+    <div class="ad-unlock-modal hidden" id="adUnlockModal" role="dialog" aria-modal="true" aria-labelledby="adUnlockTitle">
+        <div class="ad-unlock-modal-content">
+            <div class="ad-unlock-header">
+                <h3 id="adUnlockTitle">Unlock gender filter (2 minutes)</h3>
+                <button class="ad-unlock-close" type="button" id="adUnlockCloseBtn" aria-label="Close">×</button>
+            </div>
+            <p class="ad-unlock-subtitle">
+                Watch the ad below to unlock the gender filter for 2 minutes.
+            </p>
+
+            <div class="ad-unlock-slot" id="adNetworkSlot">
+                <!--
+                  IMPORTANT:
+                  Paste ONE ad provider’s code here (Monetag / Adsterra / PropellerAds).
+                  Each provider gives you a snippet (script/iframe/div) — paste it inside this slot.
+                -->
+            </div>
+
+            <div class="ad-unlock-actions">
+                <button type="button" class="btn btn-secondary" id="adUnlockStartBtn">I watched the ad</button>
+                <button type="button" class="btn btn-primary" id="adUnlockGoPremiumBtn">Go Premium</button>
+            </div>
+            <div class="ad-unlock-fineprint">
+                Note: Ad networks may require specific formats (interstitial/popunder). Use the code snippet provided by your network.
+            </div>
+        </div>
+    </div>
+
     <script src="monetization.js"></script>
     <script src="payment-system.js"></script>
+    <script src="ad-unlock.js"></script>
     <script src="app.js"></script>
     
     <script>
@@ -268,16 +304,27 @@
             const partnerGender = document.getElementById('partnerGender');
             const chip = document.getElementById('genderPremiumChip');
             const hint = document.getElementById('genderPremiumHint');
+            const adRow = document.getElementById('genderAdUnlockRow');
+            const adBtn = document.getElementById('genderAdUnlockBtn');
+            const adStatus = document.getElementById('genderAdUnlockStatus');
 
-            const hasGender =
+            const premiumHasGender =
                 typeof vcomingleMonetization !== 'undefined' &&
                 vcomingleMonetization &&
                 typeof vcomingleMonetization.hasGenderFilter === 'function' &&
                 vcomingleMonetization.hasGenderFilter();
 
+            const adHasGender =
+                typeof adUnlock !== 'undefined' &&
+                adUnlock &&
+                typeof adUnlock.isGenderUnlocked === 'function' &&
+                adUnlock.isGenderUnlocked();
+
+            const hasGender = premiumHasGender || adHasGender;
+
             if (premiumBtn) {
                 premiumBtn.addEventListener('click', showPremiumUpgrade);
-                if (hasGender) {
+                if (premiumHasGender) {
                     premiumBtn.textContent =
                         vcomingleMonetization.userTier === 'vip' ? 'VIP' : 'Premium';
                 }
@@ -290,12 +337,33 @@
                 hint.style.display = hasGender ? 'none' : 'block';
             }
             if (chip) {
-                chip.style.display = hasGender ? 'none' : 'inline-flex';
+                chip.style.display = premiumHasGender ? 'none' : 'inline-flex';
                 chip.addEventListener('click', showPremiumUpgrade);
+            }
+
+            if (adRow) {
+                // Only show ad-unlock option for free users.
+                adRow.classList.toggle('hidden', premiumHasGender);
+            }
+            if (adBtn) {
+                adBtn.onclick = () => {
+                    if (typeof adUnlock !== 'undefined' && adUnlock && adUnlock.openGenderUnlockModal) {
+                        adUnlock.openGenderUnlockModal();
+                    }
+                };
+            }
+            if (adStatus) {
+                if (adHasGender) {
+                    const seconds = Math.max(0, Math.ceil(adUnlock.getGenderRemainingMs() / 1000));
+                    adStatus.textContent = `Unlocked for ${seconds}s`;
+                } else {
+                    adStatus.textContent = '';
+                }
             }
         }
 
         window.addEventListener('load', applyPremiumUI);
+        window.applyPremiumUI = applyPremiumUI;
     </script>
     <script type="module">
     import { inject } from 'https://unpkg.com/@vercel/analytics/dist/index.mjs';
