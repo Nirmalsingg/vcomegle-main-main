@@ -344,12 +344,7 @@ function publicBaseUrl(req) {
     return `${proto}://${host}`;
 }
 
-app.get('/robots.txt', (req, res) => {
-    const base = publicBaseUrl(req);
-    res.type('text/plain').send(
-        ['User-agent: *', 'Allow: /', '', `Sitemap: ${base}/sitemap.xml`].join('\n')
-    );
-});
+
 
 app.get('/sitemap.xml', (req, res) => {
     const base = publicBaseUrl(req);
