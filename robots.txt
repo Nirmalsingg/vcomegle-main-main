@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://vcomegle-main-main.onrender.com/sitemap.xml
