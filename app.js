@@ -107,13 +107,7 @@ class VComingleApp {
     }
 
     getPartnerGenderPreference() {
-        const hasAdUnlock =
-            typeof adUnlock !== 'undefined' &&
-            adUnlock &&
-            typeof adUnlock.isGenderUnlocked === 'function' &&
-            adUnlock.isGenderUnlocked();
-
-        if (!this.hasPremiumGenderFilter() && !hasAdUnlock) return 'random';
+        if (!this.hasPremiumGenderFilter()) return 'random';
         const v = (this.partnerGenderSelect && this.partnerGenderSelect.value) || 'random';
         if (v === 'male' || v === 'female') return v;
         return 'random';
