@@ -22,12 +22,13 @@ class VCominglePaymentSystem {
     setupPaymentButtons() {
         const premiumBtn = document.getElementById('premiumBtn');
         if (premiumBtn) {
-            premiumBtn.onclick = () => this.showPaymentModal('premium', 9.99);
+            premiumBtn.onclick = () => this.showPaymentModal('premium');
         }
     }
 
     // Show payment modal with multiple options
     showPaymentModal(tier, amount) {
+        amount = this.getPlanAmount(tier, amount);
         const modal = document.createElement('div');
         modal.className = 'payment-modal';
         modal.innerHTML = `
@@ -118,6 +119,14 @@ class VCominglePaymentSystem {
         return Math.round(usdAmount * 83); // 1 USD ≈ 83 INR
     }
 
+    getPlanAmount(tier, amount) {
+        if (typeof amount === 'number') return amount;
+        if (typeof getVCominglePlanAmount === 'function') {
+            return getVCominglePlanAmount(tier);
+        }
+        return tier === 'vip' ? 5.99 : 1.19;
+    }
+
     // Get benefits HTML for tier
     getBenefitsHTML(tier) {
         if (tier === 'premium') {
@@ -146,8 +155,8 @@ class VCominglePaymentSystem {
                 <div class="benefit-card">
                     <div class="benefit-icon">🌍</div>
                     <div class="benefit-text">
-                        <strong>Location Filters</strong>
-                        <span>Connect by region</span>
+                        <strong>Premium Controls</strong>
+                        <span>Premium badge and controls unlock instantly</span>
                     </div>
                 </div>
                 <div class="benefit-card">
@@ -161,7 +170,7 @@ class VCominglePaymentSystem {
                     <div class="benefit-icon">🎁</div>
                     <div class="benefit-text">
                         <strong>Virtual Gifts</strong>
-                        <span>Send gifts to strangers</span>
+                        <span>Send gifts without coin limits</span>
                     </div>
                 </div>
             `;
@@ -278,9 +287,6 @@ class VCominglePaymentSystem {
                     </button>
                 </div>
 
-                <div class="payment-support">
-                    <p>Need help? Contact: support@vcomingle.com</p>
-                </div>
             </div>
         `;
         
@@ -423,6 +429,14 @@ class VCominglePaymentSystem {
         this.formatCardInputs();
     }
 
+    showNetBanking(tier, amount) {
+        this.showCardForm(tier, amount);
+    }
+
+    showWalletOptions(tier, amount) {
+        this.initiateUPIPayment(tier, amount);
+    }
+
     // Format card inputs
     formatCardInputs() {
         const cardNumber = document.getElementById('cardNumber');
@@ -475,6 +489,8 @@ class VCominglePaymentSystem {
                 
                 document.querySelectorAll('.card-modal, .payment-modal').forEach(modal => modal.remove());
                 this.updatePremiumButton(tier);
+                this.activatePremiumFeatures(tier);
+                this.showPremiumNotification(tier);
             } else {
                 alert('Payment failed. Please try again.');
             }
@@ -581,6 +597,10 @@ class VCominglePaymentSystem {
         
         // Enable premium functionality
         this.enablePremiumFunctionality(tier);
+
+        if (typeof window.applyPremiumUI === 'function') {
+            window.applyPremiumUI();
+        }
         
         console.log(`${tier} features activated successfully!`);
     }

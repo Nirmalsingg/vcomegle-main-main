@@ -75,7 +75,7 @@ class VComingleMonetization {
     async upgradeToPremium() {
         try {
             // In production, integrate with Stripe/PayPal
-            const success = await this.processPayment('premium', 9.99);
+            const success = await this.processPayment('premium', getVCominglePlanAmount('premium'));
             if (success) {
                 this.userTier = 'premium';
                 this.saveUserData();
@@ -90,7 +90,7 @@ class VComingleMonetization {
 
     async upgradeToVIP() {
         try {
-            const success = await this.processPayment('vip', 19.99);
+            const success = await this.processPayment('vip', getVCominglePlanAmount('vip'));
             if (success) {
                 this.userTier = 'vip';
                 this.saveUserData();
@@ -147,13 +147,15 @@ class VComingleMonetization {
         const gift = gifts[giftType];
         if (!gift) return false;
 
-        if (this.virtualCoins < gift.cost) {
+        if (this.userTier === 'free' && this.virtualCoins < gift.cost) {
             alert(`Not enough coins! You need ${gift.cost} coins for a ${gift.name}`);
             return false;
         }
 
-        this.virtualCoins -= gift.cost;
-        this.saveUserData();
+        if (this.userTier === 'free') {
+            this.virtualCoins -= gift.cost;
+            this.saveUserData();
+        }
 
         // Send gift to recipient
         this.sendGiftToRecipient(gift, recipientId);
@@ -263,6 +265,19 @@ class VComingleMonetization {
 
         return stats;
     }
+}
+
+window.VCOMINGLE_PRICING = Object.freeze({
+    premium: 1.19,
+    vip: 5.99
+});
+
+function getVCominglePlanAmount(tier) {
+    return window.VCOMINGLE_PRICING && window.VCOMINGLE_PRICING[tier]
+        ? window.VCOMINGLE_PRICING[tier]
+        : tier === 'vip'
+            ? 5.99
+            : 1.19;
 }
 
 // Initialize monetization system

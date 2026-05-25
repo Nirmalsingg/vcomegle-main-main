@@ -46,7 +46,7 @@ io.on('connection', (socket) => {
 
     // User looking for a match
     socket.on('find-match', (data) => {
-        const { textOnly, interests, selfGender, partnerGender } = data || {};
+        const { textOnly, interests, selfGender, partnerGender, tier } = data || {};
         removeWaitingUser(socket.id);
         const user = {
             id: socket.id,
@@ -54,6 +54,7 @@ io.on('connection', (socket) => {
             interests: interests ? interests.split(',').map(i => i.trim()) : [],
             selfGender: selfGender === 'male' || selfGender === 'female' ? selfGender : 'unspecified',
             partnerGender: partnerGender === 'male' || partnerGender === 'female' ? partnerGender : 'random',
+            tier: tier === 'premium' || tier === 'vip' ? tier : 'free',
             socket: socket
         };
 
@@ -248,7 +249,11 @@ function queueUser(user) {
     if (!user || !user.socket.connected || isUserInRoom(user.id)) return;
     removeWaitingUser(user.id);
     user.addedTime = Date.now();
-    waitingUsers.push(user);
+    if (user.tier === 'premium' || user.tier === 'vip') {
+        waitingUsers.unshift(user);
+    } else {
+        waitingUsers.push(user);
+    }
 }
 
 function removeWaitingUser(userId) {

@@ -155,8 +155,15 @@ class VComingleApp {
     }
 
     async initializeLocalMedia() {
+        const premiumVideo =
+            typeof vcomingleMonetization !== 'undefined' &&
+            vcomingleMonetization &&
+            typeof vcomingleMonetization.hasHDVideo === 'function' &&
+            vcomingleMonetization.hasHDVideo();
         const constraints = {
-            video: { width: { ideal: 1280 }, height: { ideal: 720 } },
+            video: premiumVideo
+                ? { width: { ideal: 1920 }, height: { ideal: 1080 } }
+                : { width: { ideal: 1280 }, height: { ideal: 720 } },
             audio: true
         };
         this.localStream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -352,7 +359,11 @@ class VComingleApp {
                 textOnly: this.textOnly,
                 interests,
                 selfGender: this.getSelfGender(),
-                partnerGender: this.getPartnerGenderPreference()
+                partnerGender: this.getPartnerGenderPreference(),
+                tier:
+                    typeof vcomingleMonetization !== 'undefined' && vcomingleMonetization
+                        ? vcomingleMonetization.userTier
+                        : 'free'
             });
             return;
         }
@@ -362,7 +373,11 @@ class VComingleApp {
                 textOnly: this.textOnly,
                 interests,
                 selfGender: this.getSelfGender(),
-                partnerGender: this.getPartnerGenderPreference()
+                partnerGender: this.getPartnerGenderPreference(),
+                tier:
+                    typeof vcomingleMonetization !== 'undefined' && vcomingleMonetization
+                        ? vcomingleMonetization.userTier
+                        : 'free'
             });
             return;
         }

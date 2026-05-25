@@ -26,6 +26,7 @@
     <meta name="description" content="VComingle — talk to strangers with random video chat or text-only mode. Free WebRTC matching with optional interests.">
     <meta name="robots" content="index, follow">
     <meta name="theme-color" content="#667eea">
+    <link rel="canonical" href="https://vcomegle-main-main.onrender.com/">
     <meta property="og:title" content="VComingle — Random video &amp; text chat">
     <meta property="og:description" content="Meet strangers worldwide: video + text or text-only anonymous chat.">
     <meta property="og:type" content="website">
@@ -250,7 +251,7 @@
         function showPremiumUpgrade() {
             try {
                 if (typeof paymentSystem !== 'undefined' && paymentSystem && paymentSystem.showPaymentModal) {
-                    paymentSystem.showPaymentModal('premium', 9.99);
+                    paymentSystem.showPaymentModal('premium');
                 } else {
                     window.open('premium-features.html', '_blank');
                 }
@@ -274,7 +275,7 @@
             const hasGender = premiumHasGender;
 
             if (premiumBtn) {
-                premiumBtn.addEventListener('click', showPremiumUpgrade);
+                premiumBtn.onclick = showPremiumUpgrade;
                 if (premiumHasGender) {
                     premiumBtn.textContent =
                         vcomingleMonetization.userTier === 'vip' ? 'VIP' : 'Premium';

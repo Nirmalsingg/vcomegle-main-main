@@ -357,7 +357,6 @@ class PaymentAPI {
                     
                     <div class="footer">
                         <p>Thank you for choosing VComingle!</p>
-                        <p>For support, contact: support@vcomingle.com</p>
                     </div>
                 </div>
             </body>
