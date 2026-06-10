@@ -23,27 +23,54 @@
      crossorigin="anonymous"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="VComingle — talk to strangers with random video chat or text-only mode. Free WebRTC matching with optional interests.">
+    <meta name="description" content="VComingle is a free random video chat and anonymous text chat platform where you can instantly meet and talk to strangers worldwide.">
+    <meta name="keywords" content="VComingle, random video chat, anonymous text chat, talk to strangers, free video chat, stranger chat, online chat, meet new people, text chat, web chat">
     <meta name="robots" content="index, follow">
     <meta name="theme-color" content="#667eea">
     <link rel="canonical" href="https://vcomegle-main-main.onrender.com/">
-    <meta property="og:title" content="VComingle — Random video &amp; text chat">
-    <meta property="og:description" content="Meet strangers worldwide: video + text or text-only anonymous chat.">
+    <meta property="og:title" content="VComingle - Free Random Video Chat &amp; Anonymous Text Chat">
+    <meta property="og:description" content="VComingle is a free random video chat and anonymous text chat platform where you can instantly meet and talk to strangers worldwide.">
     <meta property="og:type" content="website">
-    <title>VComingle — Random video &amp; text chat</title>
+    <meta property="og:url" content="https://vcomegle-main-main.onrender.com/">
+    <meta property="og:site_name" content="VComingle">
+    <meta property="og:locale" content="en_US">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="VComingle - Free Random Video Chat &amp; Anonymous Text Chat">
+    <meta name="twitter:description" content="VComingle is a free random video chat and anonymous text chat platform where you can instantly meet and talk to strangers worldwide.">
+    <title>VComingle - Free Random Video Chat &amp; Anonymous Text Chat</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="monetization.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="/socket.io/socket.io.js"></script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "VComingle",
+      "applicationCategory": "CommunicationApplication",
+      "operatingSystem": "Web Browser",
+      "description": "VComingle is a free random video chat and anonymous text chat platform where you can instantly meet and talk to strangers worldwide.",
+      "url": "https://vcomegle-main-main.onrender.com/"
+    }
+    </script>
 </head>
 <body>
     <div class="app-container">
         <!-- Header -->
         <header class="header">
             <div class="logo">
-                <h1>VComingle</h1>
+                <div class="site-name">VComingle</div>
                 <span class="tagline">Talk to strangers</span>
             </div>
+            <nav class="main-nav" aria-label="Primary">
+                <a href="/">Home</a>
+                <a href="/random-video-chat">Video Chat</a>
+                <a href="/anonymous-chat">Anonymous Chat</a>
+                <a href="/text-chat">Text Chat</a>
+                <a href="/meet-new-people-online">Meet People</a>
+            </nav>
             <div class="header-actions">
                 <button id="premiumBtn" class="premium-btn" type="button">
                     Premium
@@ -59,7 +86,7 @@
             <!-- Welcome Screen -->
             <div id="welcomeScreen" class="screen welcome-screen">
                 <div class="welcome-content">
-                    <h2>Welcome to VComingle</h2>
+                    <h1>Free Random Video Chat &amp; Anonymous Text Chat</h1>
                     <p>Meet strangers randomly — video with text, or text-only (no camera).</p>
                     
                     <div class="mobile-notice">
@@ -205,12 +232,38 @@
             </div>
         </main>
 
+        <section class="seo-content" aria-labelledby="seo-random-video-chat">
+            <div class="seo-content-inner">
+                <p class="seo-kicker">Free online stranger chat</p>
+                <h2 id="seo-random-video-chat">Random Video Chat</h2>
+                <p>VComingle gives people a simple way to start a random video chat from a web browser without a complicated signup flow. The idea is direct: choose how you want to chat, press start, and get matched with another person who is also ready for a conversation. Because the experience runs in the browser, you can use VComingle on a desktop, laptop, tablet, or mobile device with a modern connection. The platform is designed for quick conversations, casual introductions, and those spontaneous moments when you want to hear a fresh perspective from someone outside your usual circle.</p>
+                <p>Random video chat works best when it feels fast, lightweight, and easy to understand. VComingle keeps the chat area focused on the essentials: your video, the stranger's video, text messages, and simple controls for next, stop, and report. You can move to a new match whenever a conversation is not the right fit. This makes the site useful for short social breaks, language practice, friendly small talk, and meeting people from different places without installing extra software.</p>
+
+                <h2>Anonymous Chat with Strangers</h2>
+                <p>Not every conversation needs a camera. VComingle also supports anonymous text chat for people who prefer to type, want a quieter experience, or do not want to grant camera access. Text-only mode keeps the core stranger chat experience while removing the pressure of being on video. You can talk about hobbies, music, games, travel, movies, daily life, or anything appropriate for a public chat environment. The optional interests field helps you describe what you like before searching, making it easier to start with a topic instead of a blank screen.</p>
+                <p>Anonymous chat can be valuable because it lets conversations begin with curiosity instead of profiles, follower counts, or polished introductions. VComingle is built around instant communication, so the first message matters more than a long biography. You can keep things casual, leave when needed, and decide how much you want to share. As with any online chat with strangers, users should avoid sharing private details such as full names, addresses, passwords, payment information, or personal contact information.</p>
+
+                <h2>Meet New People Worldwide</h2>
+                <p>One of the main reasons people search for random chat platforms is the chance to meet new people worldwide. A browser-based platform can connect users across cities, countries, cultures, and time zones. That global mix is what makes stranger chat interesting: one match might be a quick hello, another might become a thoughtful conversation about school, work, music, sports, technology, or life in another part of the world. VComingle keeps the interface simple so the conversation itself stays at the center.</p>
+                <h3>Simple conversations for everyday discovery</h3>
+                <p>You do not need a polished profile to learn something new from another person. A short conversation can help you practice social confidence, hear different opinions, or discover new recommendations. VComingle is especially suited for people who want a free random chat experience that includes both video and text options. The ability to switch matches quickly keeps the experience flexible, while the homepage rules encourage respectful behavior from the first session.</p>
+
+                <h2>Safe Online Communication</h2>
+                <p>Safe online communication is essential on any random video chat or anonymous text chat platform. VComingle includes visible rules, a report button, and user controls that make it easier to leave uncomfortable conversations. Respectful behavior helps everyone: keep conversations legal, age-appropriate, and considerate. If a stranger behaves inappropriately, stop the chat and report the session. The best random chat experiences happen when people treat each other like real humans, even when the match is brief and anonymous.</p>
+                <p>VComingle is intended for adults and should be used responsibly. Users should protect their privacy, avoid recording or distributing conversations without consent, and remember that strangers online may not always be who they claim to be. By combining quick matching, anonymous text chat, random video chat, and straightforward safety controls, VComingle aims to offer a practical place to meet new people online while keeping the experience focused, accessible, and respectful.</p>
+            </div>
+        </section>
+
         <!-- Revenue Dashboard (currently unused) -->
 
         <!-- Footer -->
         <footer class="footer">
             <div class="footer-links">
                 <a href="/about.html">About</a>
+                <a href="/random-video-chat">Random Video Chat</a>
+                <a href="/anonymous-chat">Anonymous Chat</a>
+                <a href="/text-chat">Text Chat</a>
+                <a href="/meet-new-people-online">Meet People</a>
                 <a href="/contact.html">Contact</a>
                 <a href="/privacy.html">Privacy Policy</a>
                 <a href="/terms.html">Terms of Service</a>

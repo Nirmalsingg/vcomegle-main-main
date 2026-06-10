@@ -24,13 +24,52 @@ const io = socketIo(server, {
     allowEIO3: true
 });
 
+const PUBLIC_PAGES = [
+    { path: '/', changefreq: 'weekly', priority: '1.0' },
+    { path: '/random-video-chat', changefreq: 'weekly', priority: '0.9' },
+    { path: '/anonymous-chat', changefreq: 'weekly', priority: '0.9' },
+    { path: '/text-chat', changefreq: 'weekly', priority: '0.9' },
+    { path: '/meet-new-people-online', changefreq: 'weekly', priority: '0.9' },
+    { path: '/premium-features.html', changefreq: 'monthly', priority: '0.8' },
+    { path: '/about.html', changefreq: 'monthly', priority: '0.7' },
+    { path: '/contact.html', changefreq: 'monthly', priority: '0.7' },
+    { path: '/privacy.html', changefreq: 'monthly', priority: '0.8' },
+    { path: '/terms.html', changefreq: 'monthly', priority: '0.8' },
+    { path: '/content-policy.html', changefreq: 'monthly', priority: '0.8' }
+];
+
 // Middleware
 app.use(helmet({
     contentSecurityPolicy: false
 }));
 app.use(cors());
 app.use(morgan('combined'));
-app.use(express.static(path.join(__dirname)));
+
+app.get('/robots.txt', (req, res) => {
+    const base = publicBaseUrl(req);
+    res.type('text/plain').send(
+        `User-agent: *\n` +
+            `Allow: /\n\n` +
+            `Sitemap: ${base}/sitemap.xml\n`
+    );
+});
+
+app.get('/sitemap.xml', (req, res) => {
+    res.type('application/xml').send(generateSitemapXml(publicBaseUrl(req)));
+});
+
+app.use(express.static(path.join(__dirname), {
+    etag: true,
+    lastModified: true,
+    setHeaders: (res, filePath) => {
+        const ext = path.extname(filePath).toLowerCase();
+        if (['.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.ico', '.woff', '.woff2'].includes(ext)) {
+            res.setHeader('Cache-Control', 'public, max-age=86400');
+        } else if (ext === '.html' || ext === '.xml' || ext === '.txt') {
+            res.setHeader('Cache-Control', 'public, max-age=300');
+        }
+    }
+}));
 
 // Store connected users and rooms
 const users = new Map();
@@ -349,23 +388,21 @@ function publicBaseUrl(req) {
     return `${proto}://${host}`;
 }
 
+function generateSitemapXml(base) {
+    const urls = PUBLIC_PAGES.map((page) => {
+        const loc = page.path === '/' ? `${base}/` : `${base}${page.path}`;
+        return (
+            `<url>` +
+            `<loc>${loc}</loc>` +
+            `<changefreq>${page.changefreq}</changefreq>` +
+            `<priority>${page.priority}</priority>` +
+            `</url>`
+        );
+    }).join('');
 
-
-app.get('/sitemap.xml', (req, res) => {
-    const base = publicBaseUrl(req);
-    const home = `${base}/`;
-    res.type('application/xml').send(
-        `<?xml version="1.0" encoding="UTF-8"?>` +
-            `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">` +
-            `<url><loc>${home}</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>` +
-            `<url><loc>${base}/privacy.html</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>` +
-            `<url><loc>${base}/terms.html</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>` +
-            `<url><loc>${base}/content-policy.html</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>` +
-            `<url><loc>${base}/contact.html</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>` +
-            `<url><loc>${base}/about.html</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>` +
-            `</urlset>`
-    );
-});
+    return `<?xml version="1.0" encoding="UTF-8"?>` +
+        `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls}</urlset>`;
+}
 
 // Serve the main HTML file
 app.get('/', (req, res) => {
@@ -391,6 +428,26 @@ app.get('/contact.html', (req, res) => {
 
 app.get('/about.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'about.html'));
+});
+
+app.get('/premium-features.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'premium-features.html'));
+});
+
+app.get('/random-video-chat', (req, res) => {
+    res.sendFile(path.join(__dirname, 'random-video-chat.html'));
+});
+
+app.get('/anonymous-chat', (req, res) => {
+    res.sendFile(path.join(__dirname, 'anonymous-chat.html'));
+});
+
+app.get('/text-chat', (req, res) => {
+    res.sendFile(path.join(__dirname, 'text-chat.html'));
+});
+
+app.get('/meet-new-people-online', (req, res) => {
+    res.sendFile(path.join(__dirname, 'meet-new-people-online.html'));
 });
 
 // Health check endpoint
