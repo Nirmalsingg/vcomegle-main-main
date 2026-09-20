@@ -74,7 +74,9 @@ app.use(express.static(path.join(__dirname), {
     lastModified: true,
     setHeaders: (res, filePath) => {
         const ext = path.extname(filePath).toLowerCase();
-        if (['.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.ico', '.woff', '.woff2'].includes(ext)) {
+        if (ext === '.js') {
+            res.setHeader('Cache-Control', 'public, max-age=300, must-revalidate');
+        } else if (['.css', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.ico', '.woff', '.woff2'].includes(ext)) {
             res.setHeader('Cache-Control', 'public, max-age=86400');
         } else if (ext === '.html' || ext === '.xml' || ext === '.txt') {
             res.setHeader('Cache-Control', 'public, max-age=300');

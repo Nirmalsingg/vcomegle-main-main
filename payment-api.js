@@ -40,6 +40,7 @@ class PaymentAPI {
     }
 
     setupRoutes() {
+        this.app.get('/api/deployment-info', this.getDeploymentInfo.bind(this));
         this.app.get('/api/payment-config', this.getPaymentConfig.bind(this));
         this.app.post('/api/payments/upi-order', this.createUPIOrder.bind(this));
         this.app.get('/api/payments/:referenceId/status', this.getPaymentStatus.bind(this));
@@ -48,6 +49,27 @@ class PaymentAPI {
         // Legacy endpoints are kept, but they never activate Premium from client assertions.
         this.app.post('/api/verify-payment', this.rejectClientSideVerification.bind(this));
         this.app.post('/api/verify-upi', this.rejectClientSideVerification.bind(this));
+    }
+
+    getDeploymentInfo(req, res) {
+        return res.json({
+            success: true,
+            commit: process.env.RENDER_GIT_COMMIT ||
+                process.env.VERCEL_GIT_COMMIT_SHA ||
+                process.env.GIT_COMMIT ||
+                'unknown',
+            service: process.env.RENDER_SERVICE_NAME
+                ? 'render'
+                : process.env.VERCEL
+                    ? 'vercel'
+                    : 'unknown',
+            assetVersion: 'upi-premium-99-20260920',
+            paymentEnvironment: {
+                UPI_PAYEE_ID: Boolean(process.env.UPI_PAYEE_ID),
+                UPI_MERCHANT_NAME: Boolean(process.env.UPI_MERCHANT_NAME),
+                PAYMENT_WEBHOOK_SECRET: Boolean(process.env.PAYMENT_WEBHOOK_SECRET)
+            }
+        });
     }
 
     getPaymentConfig(req, res) {
