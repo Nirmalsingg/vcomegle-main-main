@@ -26,11 +26,12 @@ class VComingleMonetization {
         }
     }
 
-    saveUserData() {
+    saveUserData(extraData = {}) {
         localStorage.setItem('vcomingle_user_data', JSON.stringify({
             tier: this.userTier,
             coins: this.virtualCoins,
-            userId: this.userId
+            userId: this.userId,
+            ...extraData
         }));
     }
 
@@ -73,17 +74,10 @@ class VComingleMonetization {
 
     // Subscription Management
     async upgradeToPremium() {
-        try {
-            // In production, integrate with Stripe/PayPal
-            const success = await this.processPayment('premium', getVCominglePlanAmount('premium'));
-            if (success) {
-                this.userTier = 'premium';
-                this.saveUserData();
-                this.showUpgradeSuccess('Premium');
-                return true;
-            }
-        } catch (error) {
-            console.error('Premium upgrade failed:', error);
+        if (window.paymentSystem && typeof window.paymentSystem.showPaymentModal === 'function') {
+            window.paymentSystem.showPaymentModal('premium');
+        } else {
+            window.open('premium-features.html', '_blank');
         }
         return false;
     }
@@ -104,16 +98,8 @@ class VComingleMonetization {
     }
 
     processPayment(tier, amount) {
-        return new Promise((resolve) => {
-            // Simulate payment processing
-            // In production, integrate with Stripe, PayPal, or other payment gateway
-            console.log(`Processing ${tier} payment: $${amount}`);
-            
-            // Simulate payment success
-            setTimeout(() => {
-                resolve(true);
-            }, 2000);
-        });
+        console.warn('Client-side payment processing is disabled. Use the backend verified payment flow.', { tier, amount });
+        return Promise.resolve(false);
     }
 
     showUpgradeSuccess(tier) {
@@ -268,16 +254,16 @@ class VComingleMonetization {
 }
 
 window.VCOMINGLE_PRICING = Object.freeze({
-    premium: 1.19,
-    vip: 5.99
+    premium: 99,
+    vip: 499
 });
 
 function getVCominglePlanAmount(tier) {
     return window.VCOMINGLE_PRICING && window.VCOMINGLE_PRICING[tier]
         ? window.VCOMINGLE_PRICING[tier]
         : tier === 'vip'
-            ? 5.99
-            : 1.19;
+            ? 499
+            : 99;
 }
 
 // Initialize monetization system

@@ -45,6 +45,17 @@ app.use(helmet({
 app.use(cors());
 app.use(morgan('combined'));
 
+let paymentAPI = null;
+if (PaymentAPI) {
+    paymentAPI = new PaymentAPI();
+    app.use((req, res, next) => {
+        if (req.path === '/api' || req.path.startsWith('/api/')) {
+            return paymentAPI.app(req, res, next);
+        }
+        return next();
+    });
+}
+
 app.get('/robots.txt', (req, res) => {
     const base = publicBaseUrl(req);
     res.type('text/plain').send(
@@ -468,10 +479,9 @@ server.listen(PORT, () => {
 
     if (process.env.ENABLE_PAYMENT_API === 'true' && PaymentAPI) {
         const paymentPort = parseInt(process.env.PAYMENT_PORT || '3001', 10);
-        const paymentAPI = new PaymentAPI();
-        paymentAPI.start(paymentPort);
+        new PaymentAPI().start(paymentPort);
         console.log(`Payment API server running on port ${paymentPort}`);
-    } else if (PaymentAPI) {
-        console.log('Payment API available but not started (set ENABLE_PAYMENT_API=true to enable).');
+    } else if (paymentAPI) {
+        console.log('Payment API mounted on the main server.');
     }
 });
