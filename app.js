@@ -12,6 +12,8 @@ class VComingleApp {
         this.connectionStartTime = null;
         this.connectionCheckInterval = null;
         this.socketHandlersBound = false;
+        this.disconnectHomeTimer = null;
+        this.demoMatchTimer = null;
 
         this.initializeElements();
         this.initializeEventListeners();
@@ -41,6 +43,7 @@ class VComingleApp {
         this.toggleGiftsBtn = document.getElementById('toggleGifts');
         this.findNewBtn = document.getElementById('findNew');
         this.goHomeBtn = document.getElementById('goHome');
+        this.cancelSearchBtn = document.getElementById('cancelSearch');
 
         this.chatModeVideo = document.getElementById('chatModeVideo');
         this.chatModeText = document.getElementById('chatModeText');
@@ -81,6 +84,9 @@ class VComingleApp {
 
         this.findNewBtn.addEventListener('click', () => this.startChat());
         this.goHomeBtn.addEventListener('click', () => this.goHome());
+        if (this.cancelSearchBtn) {
+            this.cancelSearchBtn.addEventListener('click', () => this.cancelSearch());
+        }
     }
 
     syncChatModeFromUI() {
