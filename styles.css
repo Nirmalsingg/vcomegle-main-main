@@ -501,19 +501,52 @@ body {
     gap: 0.4rem;
     min-height: 42px;
     padding: 0.35rem 0.55rem;
-    border: 2px solid #e1e1e1;
+    border: 2px solid #c7d2fe;
     border-radius: 8px;
-    background: rgba(255, 255, 255, 0.9);
-    color: #333;
+    background: #f8fafc;
+    box-shadow: 0 3px 10px rgba(79, 70, 229, 0.12);
+    color: #334155;
     font-size: 0.85rem;
     font-weight: 600;
 }
 
+.camera-filter-control::before {
+    content: '';
+    width: 14px;
+    height: 14px;
+    flex: 0 0 14px;
+    border-radius: 4px;
+    background: linear-gradient(135deg, #64748b, #cbd5e1);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.7);
+}
+
+.camera-filter-control[data-filter='warm']::before {
+    background: linear-gradient(135deg, #f97316, #facc15);
+}
+
+.camera-filter-control[data-filter='cool']::before {
+    background: linear-gradient(135deg, #0ea5e9, #2dd4bf);
+}
+
+.camera-filter-control[data-filter='mono']::before {
+    background: linear-gradient(135deg, #111827, #94a3b8);
+}
+
+.camera-filter-control[data-filter='vivid']::before {
+    background: linear-gradient(135deg, #ec4899, #8b5cf6);
+}
+
+.camera-filter-title {
+    white-space: nowrap;
+}
+
 .camera-filter-control select {
     min-width: 88px;
-    border: 0;
-    background: transparent;
-    color: #333;
+    padding: 0.2rem 0.3rem;
+    border: 1px solid #dbeafe;
+    border-radius: 5px;
+    background: #ffffff;
+    color: #334155;
     font: inherit;
     cursor: pointer;
 }
@@ -523,7 +556,8 @@ body {
 }
 
 .camera-filter-control:focus-within {
-    border-color: #667eea;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.16);
 }
 
 /* Chat Screen */
@@ -1081,6 +1115,19 @@ body {
 
     .controls {
         gap: 0.4rem;
+    }
+
+    .camera-filter-control {
+        flex: 1 0 100%;
+        justify-content: space-between;
+        min-height: 48px;
+        padding: 0.45rem 0.65rem;
+        order: -1;
+    }
+
+    .camera-filter-control select {
+        min-width: 132px;
+        min-height: 34px;
     }
 
     .controls .btn {

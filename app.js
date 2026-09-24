@@ -795,6 +795,8 @@ class VComingleApp {
         };
         const selectedFilter = this.cameraFilterSelect && this.cameraFilterSelect.value;
         this.localVideo.style.filter = filters[selectedFilter] || filters.none;
+        const filterControl = this.cameraFilterSelect && this.cameraFilterSelect.closest('.camera-filter-control');
+        if (filterControl) filterControl.dataset.filter = selectedFilter || 'none';
     }
 
     toggleAudio() {
