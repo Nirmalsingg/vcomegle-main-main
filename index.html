@@ -184,6 +184,16 @@
                     <button id="reportButton" class="btn btn-warning">Report</button>
                     <button id="toggleVideo" class="btn btn-control">📹</button>
                     <button id="toggleAudio" class="btn btn-control">🎤</button>
+                    <label class="camera-filter-control" for="cameraFilter">
+                        <span>Filter</span>
+                        <select id="cameraFilter" aria-label="Choose camera filter">
+                            <option value="none">Normal</option>
+                            <option value="warm">Warm</option>
+                            <option value="cool">Cool</option>
+                            <option value="mono">Mono</option>
+                            <option value="vivid">Vivid</option>
+                        </select>
+                    </label>
                     <button id="toggleGifts" class="btn btn-control gift-toggle" type="button" aria-expanded="false" aria-controls="virtualGiftsPanel">🎁 Gifts</button>
                 </div>
 
@@ -231,7 +241,6 @@
             <div id="disconnectedScreen" class="screen disconnected-screen hidden">
                 <div class="disconnected-content">
                     <h2>Stranger has disconnected</h2>
-                    <p id="disconnectedDetail">Returning home in 2 seconds...</p>
                     <button id="findNew" class="btn btn-primary">Find New Stranger</button>
                     <button id="goHome" class="btn btn-secondary">Go Home</button>
                 </div>

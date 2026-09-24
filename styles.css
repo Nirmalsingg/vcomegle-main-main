@@ -495,6 +495,37 @@ body {
     background: #f0f0f0;
 }
 
+.camera-filter-control {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-height: 42px;
+    padding: 0.35rem 0.55rem;
+    border: 2px solid #e1e1e1;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.9);
+    color: #333;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.camera-filter-control select {
+    min-width: 88px;
+    border: 0;
+    background: transparent;
+    color: #333;
+    font: inherit;
+    cursor: pointer;
+}
+
+.camera-filter-control select:focus {
+    outline: none;
+}
+
+.camera-filter-control:focus-within {
+    border-color: #667eea;
+}
+
 /* Chat Screen */
 .chat-screen {
     display: flex;
@@ -523,7 +554,7 @@ body {
 
 .video-wrapper {
     position: relative;
-    background: #000;
+    background: #e8edf5;
     border-radius: 14px;
     overflow: hidden;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
@@ -557,7 +588,7 @@ body {
 }
 
 .video-remote {
-    object-fit: contain;
+    object-fit: cover;
 }
 
 .video-label {
@@ -923,6 +954,12 @@ body {
     .btn-control {
         padding: 0.5rem 0.8rem;
         font-size: 1rem;
+    }
+
+    .camera-filter-control {
+        min-height: 38px;
+        padding: 0.25rem 0.45rem;
+        font-size: 0.8rem;
     }
     
     .btn {

@@ -12,7 +12,6 @@ class VComingleApp {
         this.connectionStartTime = null;
         this.connectionCheckInterval = null;
         this.socketHandlersBound = false;
-        this.disconnectHomeTimer = null;
         this.demoMatchTimer = null;
         this.searchRequestId = 0;
 
@@ -42,6 +41,7 @@ class VComingleApp {
         this.toggleVideoBtn = document.getElementById('toggleVideo');
         this.toggleAudioBtn = document.getElementById('toggleAudio');
         this.toggleGiftsBtn = document.getElementById('toggleGifts');
+        this.cameraFilterSelect = document.getElementById('cameraFilter');
         this.findNewBtn = document.getElementById('findNew');
         this.goHomeBtn = document.getElementById('goHome');
         this.cancelSearchBtn = document.getElementById('cancelSearch');
@@ -81,6 +81,10 @@ class VComingleApp {
         this.toggleAudioBtn.addEventListener('click', () => this.toggleAudio());
         if (this.toggleGiftsBtn) {
             this.toggleGiftsBtn.addEventListener('click', () => this.toggleGifts());
+        }
+        if (this.cameraFilterSelect) {
+            this.cameraFilterSelect.addEventListener('change', () => this.applyCameraFilter());
+            this.applyCameraFilter();
         }
 
         this.findNewBtn.addEventListener('click', () => this.startChat());
@@ -777,6 +781,20 @@ class VComingleApp {
             videoTrack.enabled = !videoTrack.enabled;
             this.toggleVideoBtn.style.opacity = videoTrack.enabled ? '1' : '0.5';
         }
+    }
+
+    applyCameraFilter() {
+        if (!this.localVideo) return;
+
+        const filters = {
+            none: 'none',
+            warm: 'sepia(0.18) saturate(1.15) contrast(1.04)',
+            cool: 'saturate(0.9) hue-rotate(12deg) brightness(1.04)',
+            mono: 'grayscale(1) contrast(1.12)',
+            vivid: 'saturate(1.45) contrast(1.08)'
+        };
+        const selectedFilter = this.cameraFilterSelect && this.cameraFilterSelect.value;
+        this.localVideo.style.filter = filters[selectedFilter] || filters.none;
     }
 
     toggleAudio() {
