@@ -43,6 +43,44 @@ class VCominglePaymentSystem {
                     <strong>₹99/month</strong>
                 </div>
 
+                <section class="premium-benefits" aria-label="Premium plan features">
+                    <div class="benefits-heading">
+                        <span>Included with Premium</span>
+                    </div>
+                    <div class="benefits-grid">
+                        <div class="benefit-card">
+                            <span class="benefit-icon">No ads</span>
+                            <strong>Ad-free chat</strong>
+                            <p>Keep conversations clean without upgrade ads.</p>
+                        </div>
+                        <div class="benefit-card">
+                            <span class="benefit-icon">HD</span>
+                            <strong>HD video</strong>
+                            <p>Use higher quality video where the device and network support it.</p>
+                        </div>
+                        <div class="benefit-card">
+                            <span class="benefit-icon">Filters</span>
+                            <strong>Gender filters</strong>
+                            <p>Unlock premium matching preferences.</p>
+                        </div>
+                        <div class="benefit-card">
+                            <span class="benefit-icon">Priority</span>
+                            <strong>Priority matching</strong>
+                            <p>Get moved ahead in the matching queue.</p>
+                        </div>
+                        <div class="benefit-card">
+                            <span class="benefit-icon">Gifts</span>
+                            <strong>Virtual gifts</strong>
+                            <p>Send gifts without free-tier coin limits.</p>
+                        </div>
+                        <div class="benefit-card">
+                            <span class="benefit-icon">Themes</span>
+                            <strong>Custom themes</strong>
+                            <p>Access Premium UI styling options.</p>
+                        </div>
+                    </div>
+                </section>
+
                 <div id="upiCheckoutBody" class="upi-loading">
                     Creating a secure UPI payment request...
                 </div>
@@ -356,6 +394,68 @@ class VCominglePaymentSystem {
                 font-size: 1.4rem;
             }
 
+            .premium-benefits {
+                margin-bottom: 18px;
+                padding: 16px;
+                border: 1px solid #edf0f7;
+                border-radius: 12px;
+                background: #ffffff;
+            }
+
+            .benefits-heading {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                margin-bottom: 12px;
+            }
+
+            .benefits-heading span {
+                color: #111827;
+                font-size: 0.98rem;
+                font-weight: 800;
+            }
+
+            .benefits-grid {
+                display: grid;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: 10px;
+            }
+
+            .benefit-card {
+                min-height: 118px;
+                padding: 12px;
+                border: 1px solid #eef2f7;
+                border-radius: 10px;
+                background: #fafbff;
+            }
+
+            .benefit-icon {
+                display: inline-flex;
+                align-items: center;
+                min-height: 24px;
+                margin-bottom: 8px;
+                padding: 3px 8px;
+                border-radius: 999px;
+                background: #eef2ff;
+                color: #5b6ee1;
+                font-size: 0.76rem;
+                font-weight: 800;
+            }
+
+            .benefit-card strong {
+                display: block;
+                margin-bottom: 5px;
+                color: #111827;
+                font-size: 0.95rem;
+            }
+
+            .benefit-card p {
+                margin: 0;
+                color: #6b7280;
+                font-size: 0.84rem;
+                line-height: 1.35;
+            }
+
             .upi-loading,
             .upi-error {
                 padding: 28px;
@@ -543,6 +643,14 @@ class VCominglePaymentSystem {
 
                 .upi-grid {
                     grid-template-columns: 1fr;
+                }
+
+                .benefits-grid {
+                    grid-template-columns: 1fr;
+                }
+
+                .benefit-card {
+                    min-height: 0;
                 }
 
                 .qr-frame {

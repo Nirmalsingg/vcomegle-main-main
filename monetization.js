@@ -3,6 +3,8 @@ class VComingleMonetization {
         this.userTier = 'free'; // free, premium, vip
         this.userId = this.getUserId();
         this.virtualCoins = 0;
+        this.genderEntitlementToken = '';
+        this.genderEntitlementExpiresAt = '';
         this.initializeMonetization();
     }
 
@@ -23,6 +25,8 @@ class VComingleMonetization {
             const data = JSON.parse(userData);
             this.userTier = data.tier || 'free';
             this.virtualCoins = data.coins || 0;
+            this.genderEntitlementToken = data.genderEntitlementToken || '';
+            this.genderEntitlementExpiresAt = data.genderEntitlementExpiresAt || '';
         }
     }
 
@@ -31,6 +35,8 @@ class VComingleMonetization {
             tier: this.userTier,
             coins: this.virtualCoins,
             userId: this.userId,
+            genderEntitlementToken: this.genderEntitlementToken,
+            genderEntitlementExpiresAt: this.genderEntitlementExpiresAt,
             ...extraData
         }));
     }
@@ -42,6 +48,83 @@ class VComingleMonetization {
 
     hasGenderFilter() {
         return this.userTier === 'premium' || this.userTier === 'vip';
+    }
+
+    hasRewardedGenderFilter() {
+        if (!this.genderEntitlementToken || !this.genderEntitlementExpiresAt) return false;
+        return new Date(this.genderEntitlementExpiresAt).getTime() > Date.now();
+    }
+
+    getGenderEntitlementToken() {
+        return this.hasRewardedGenderFilter() ? this.genderEntitlementToken : '';
+    }
+
+    saveRewardedGenderEntitlement(session) {
+        if (!session || !session.entitlementToken || !session.entitlementExpiresAt) return false;
+
+        this.genderEntitlementToken = session.entitlementToken;
+        this.genderEntitlementExpiresAt = session.entitlementExpiresAt;
+        this.saveUserData({
+            genderEntitlementToken: this.genderEntitlementToken,
+            genderEntitlementExpiresAt: this.genderEntitlementExpiresAt
+        });
+        return true;
+    }
+
+    async watchRewardedAdForGenderFilter() {
+        const session = await this.createRewardedAdSession();
+
+        if (
+            window.VCOMINGLE_REWARDED_AD_PROVIDER &&
+            typeof window.VCOMINGLE_REWARDED_AD_PROVIDER.start === 'function'
+        ) {
+            await window.VCOMINGLE_REWARDED_AD_PROVIDER.start(session);
+        } else {
+            throw new Error('Rewarded ad provider is not configured yet.');
+        }
+
+        return this.waitForRewardedAdEntitlement(session.sessionId);
+    }
+
+    async createRewardedAdSession() {
+        const response = await fetch('/api/rewarded-ads/session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: this.userId })
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success || !data.session) {
+            throw new Error(data.message || 'Could not start rewarded ad session.');
+        }
+        return data.session;
+    }
+
+    async waitForRewardedAdEntitlement(sessionId) {
+        const deadline = Date.now() + 90000;
+
+        while (Date.now() < deadline) {
+            const session = await this.getRewardedAdSession(sessionId);
+            if (session.status === 'completed' && this.saveRewardedGenderEntitlement(session)) {
+                return session;
+            }
+            if (session.status === 'expired' || session.status === 'not_completed') {
+                throw new Error('Rewarded ad was not completed.');
+            }
+            await new Promise((resolve) => setTimeout(resolve, 3000));
+        }
+
+        throw new Error('Rewarded ad confirmation timed out.');
+    }
+
+    async getRewardedAdSession(sessionId) {
+        const response = await fetch(
+            `/api/rewarded-ads/${encodeURIComponent(sessionId)}/status?userId=${encodeURIComponent(this.userId)}`
+        );
+        const data = await response.json();
+        if (!response.ok || !data.success || !data.session) {
+            throw new Error(data.message || 'Could not check rewarded ad status.');
+        }
+        return data.session;
     }
 
     hasLocationFilter() {

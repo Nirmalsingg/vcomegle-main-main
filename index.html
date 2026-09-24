@@ -72,7 +72,7 @@
                 <a href="/meet-new-people-online">Meet People</a>
             </nav>
             <div class="header-actions">
-                <button id="premiumBtn" class="premium-btn" type="button">
+                <button id="premiumBtn" class="premium-btn" type="button" hidden>
                     Premium
                 </button>
                 <div class="user-info">
@@ -128,6 +128,9 @@
                                 <option value="male">Male</option>
                                 <option value="female">Female</option>
                             </select>
+                            <button type="button" class="rewarded-ad-btn" id="genderRewardedAdBtn" hidden>
+                                Watch Ad to Unlock Gender Filter
+                            </button>
                             <div class="premium-hint" id="genderPremiumHint">
                                 Upgrade to Premium to unlock the gender filter.
                             </div>
@@ -301,6 +304,9 @@
     </script>
     
     <script>
+        // Temporary promo: gender filter is free for all users. Set this to false to restore the Premium gate.
+        window.VCOMINGLE_FREE_GENDER_FILTER = true;
+
         function showPremiumUpgrade() {
             try {
                 if (typeof paymentSystem !== 'undefined' && paymentSystem && paymentSystem.showPaymentModal) {
@@ -313,21 +319,58 @@
             }
         }
 
+        async function watchRewardedGenderAd() {
+            const rewardBtn = document.getElementById('genderRewardedAdBtn');
+            try {
+                if (
+                    typeof vcomingleMonetization === 'undefined' ||
+                    !vcomingleMonetization ||
+                    typeof vcomingleMonetization.watchRewardedAdForGenderFilter !== 'function'
+                ) {
+                    throw new Error('Rewarded ads are not available yet.');
+                }
+
+                if (rewardBtn) {
+                    rewardBtn.disabled = true;
+                    rewardBtn.textContent = 'Waiting for ad completion...';
+                }
+
+                await vcomingleMonetization.watchRewardedAdForGenderFilter();
+                applyPremiumUI();
+            } catch (error) {
+                console.error('Rewarded ad unlock error:', error);
+                alert(error && error.message ? error.message : 'Rewarded ad unlock is not available yet.');
+            } finally {
+                if (rewardBtn) {
+                    rewardBtn.disabled = false;
+                    rewardBtn.textContent = 'Watch Ad to Unlock Gender Filter';
+                }
+            }
+        }
+
         function applyPremiumUI() {
             const premiumBtn = document.getElementById('premiumBtn');
             const partnerGender = document.getElementById('partnerGender');
             const chip = document.getElementById('genderPremiumChip');
             const hint = document.getElementById('genderPremiumHint');
+            const rewardBtn = document.getElementById('genderRewardedAdBtn');
 
             const premiumHasGender =
                 typeof vcomingleMonetization !== 'undefined' &&
                 vcomingleMonetization &&
                 typeof vcomingleMonetization.hasGenderFilter === 'function' &&
                 vcomingleMonetization.hasGenderFilter();
+            const rewardedHasGender =
+                typeof vcomingleMonetization !== 'undefined' &&
+                vcomingleMonetization &&
+                typeof vcomingleMonetization.hasRewardedGenderFilter === 'function' &&
+                vcomingleMonetization.hasRewardedGenderFilter();
 
-            const hasGender = premiumHasGender;
+            const hasGender = window.VCOMINGLE_FREE_GENDER_FILTER || premiumHasGender || rewardedHasGender;
 
             if (premiumBtn) {
+                premiumBtn.hidden = true;
+                premiumBtn.style.display = 'none';
                 premiumBtn.onclick = showPremiumUpgrade;
                 if (premiumHasGender) {
                     premiumBtn.textContent =
@@ -340,10 +383,16 @@
             }
             if (hint) {
                 hint.style.display = hasGender ? 'none' : 'block';
+                hint.textContent = 'Upgrade to Premium or complete a rewarded ad to unlock the gender filter.';
             }
             if (chip) {
-                chip.style.display = premiumHasGender ? 'none' : 'inline-flex';
+                chip.style.display = hasGender ? 'none' : 'inline-flex';
                 chip.addEventListener('click', showPremiumUpgrade);
+            }
+            if (rewardBtn) {
+                rewardBtn.hidden = hasGender;
+                rewardBtn.style.display = hasGender ? 'none' : 'block';
+                rewardBtn.onclick = watchRewardedGenderAd;
             }
         }
 

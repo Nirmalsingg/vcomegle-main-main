@@ -268,6 +268,15 @@ class PaymentAPI {
         return /^[A-Za-z0-9._-]{3,80}$/.test(userId) ? userId : `anon_${crypto.randomBytes(8).toString('hex')}`;
     }
 
+    hasActiveSubscription(userId, tier = 'premium') {
+        const subscription = this.subscriptions.get(this.normalizeUserId(userId));
+        if (!subscription) return false;
+        if (tier === 'premium') {
+            return subscription.tier === 'premium' || subscription.tier === 'vip';
+        }
+        return subscription.tier === tier;
+    }
+
     start(port = 3001) {
         this.app.listen(port, () => console.log(`Payment API server running on port ${port}`));
     }

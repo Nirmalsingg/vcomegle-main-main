@@ -87,8 +87,17 @@ class VComingleApp {
         this.textOnly = !!(this.chatModeText && this.chatModeText.checked);
     }
 
-    hasPremiumGenderFilter() {
+    hasGenderFilterEntitlement() {
         try {
+            if (window.VCOMINGLE_FREE_GENDER_FILTER) return true;
+            if (
+                typeof vcomingleMonetization !== 'undefined' &&
+                vcomingleMonetization &&
+                typeof vcomingleMonetization.hasRewardedGenderFilter === 'function' &&
+                vcomingleMonetization.hasRewardedGenderFilter()
+            ) {
+                return true;
+            }
             return (
                 typeof vcomingleMonetization !== 'undefined' &&
                 vcomingleMonetization &&
@@ -100,6 +109,32 @@ class VComingleApp {
         }
     }
 
+    hasPremiumGenderFilter() {
+        return this.hasGenderFilterEntitlement();
+    }
+
+    getUserId() {
+        if (
+            typeof vcomingleMonetization !== 'undefined' &&
+            vcomingleMonetization &&
+            vcomingleMonetization.userId
+        ) {
+            return vcomingleMonetization.userId;
+        }
+        return '';
+    }
+
+    getGenderEntitlementToken() {
+        if (
+            typeof vcomingleMonetization !== 'undefined' &&
+            vcomingleMonetization &&
+            typeof vcomingleMonetization.getGenderEntitlementToken === 'function'
+        ) {
+            return vcomingleMonetization.getGenderEntitlementToken();
+        }
+        return '';
+    }
+
     getSelfGender() {
         const v = (this.selfGenderSelect && this.selfGenderSelect.value) || 'unspecified';
         if (v === 'male' || v === 'female') return v;
@@ -107,7 +142,7 @@ class VComingleApp {
     }
 
     getPartnerGenderPreference() {
-        if (!this.hasPremiumGenderFilter()) return 'random';
+        if (!this.hasGenderFilterEntitlement()) return 'random';
         const v = (this.partnerGenderSelect && this.partnerGenderSelect.value) || 'random';
         if (v === 'male' || v === 'female') return v;
         return 'random';
@@ -360,6 +395,8 @@ class VComingleApp {
                 interests,
                 selfGender: this.getSelfGender(),
                 partnerGender: this.getPartnerGenderPreference(),
+                userId: this.getUserId(),
+                genderEntitlementToken: this.getGenderEntitlementToken(),
                 tier:
                     typeof vcomingleMonetization !== 'undefined' && vcomingleMonetization
                         ? vcomingleMonetization.userTier
@@ -374,6 +411,8 @@ class VComingleApp {
                 interests,
                 selfGender: this.getSelfGender(),
                 partnerGender: this.getPartnerGenderPreference(),
+                userId: this.getUserId(),
+                genderEntitlementToken: this.getGenderEntitlementToken(),
                 tier:
                     typeof vcomingleMonetization !== 'undefined' && vcomingleMonetization
                         ? vcomingleMonetization.userTier
@@ -656,7 +695,9 @@ class VComingleApp {
         }
 
         if (this.socket && this.socket.connected) {
-            this.socket.emit('next');
+            this.socket.emit('next', {
+                genderEntitlementToken: this.getGenderEntitlementToken()
+            });
         }
     }
 

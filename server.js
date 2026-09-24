@@ -5,6 +5,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const path = require('path');
+const RewardedEntitlements = require('./rewarded-entitlements');
 
 let PaymentAPI = null;
 try {
@@ -15,6 +16,8 @@ try {
 
 const app = express();
 const server = http.createServer(app);
+const freeGenderFilterEnabled = process.env.VCOMINGLE_FREE_GENDER_FILTER !== 'false';
+const genderEntitlements = new RewardedEntitlements();
 const io = socketIo(server, {
     cors: {
         origin: "*",
@@ -48,6 +51,83 @@ app.use(morgan('combined'));
 let paymentAPI = null;
 if (PaymentAPI) {
     paymentAPI = new PaymentAPI();
+}
+
+app.use('/api/rewarded-ads', express.json({
+    limit: '100kb',
+    verify: (req, res, buf) => {
+        req.rawBody = buf.toString('utf8');
+    }
+}));
+
+app.get('/api/gender-filter/access', (req, res) => {
+    const userId = normalizeUserId(req.query.userId);
+    const entitlementToken = String(req.query.entitlementToken || '');
+    const hasPremium = hasServerVerifiedPremium(userId);
+    const hasReward = genderEntitlements.hasGenderFilterAccess({
+        userId,
+        token: entitlementToken,
+        hasPremium: false,
+        freeOverride: false
+    });
+
+    return res.json({
+        success: true,
+        free: freeGenderFilterEnabled,
+        premium: hasPremium,
+        rewarded: hasReward,
+        hasGenderFilter: freeGenderFilterEnabled || hasPremium || hasReward,
+        rewardDurationSeconds: RewardedEntitlements.GENDER_FILTER_REWARD_MS / 1000
+    });
+});
+
+app.post('/api/rewarded-ads/session', (req, res) => {
+    const session = genderEntitlements.createRewardedAdSession(req.body && req.body.userId);
+    return res.status(201).json({
+        success: true,
+        session,
+        message: 'Rewarded-ad session created. Gender entitlement is granted only after provider completion confirmation.'
+    });
+});
+
+app.get('/api/rewarded-ads/:sessionId/status', (req, res) => {
+    const session = genderEntitlements.getRewardedAdSession(
+        req.params.sessionId,
+        req.query.userId
+    );
+
+    if (!session) {
+        return res.status(404).json({
+            success: false,
+            message: 'Rewarded-ad session not found.'
+        });
+    }
+
+    return res.json({ success: true, session });
+});
+
+app.post('/api/rewarded-ads/provider-confirmation', (req, res) => {
+    const result = genderEntitlements.confirmRewardedAdCompletion(
+        req.body,
+        req.get('X-Rewarded-Ad-Signature'),
+        req.rawBody
+    );
+
+    if (!result.ok) {
+        return res.status(result.statusCode || 400).json({
+            success: false,
+            message: result.message
+        });
+    }
+
+    return res.json({
+        success: true,
+        session: result.session,
+        replayed: Boolean(result.replayed)
+    });
+});
+
+if (paymentAPI) {
     app.use((req, res, next) => {
         if (req.path === '/api' || req.path.startsWith('/api/')) {
             return paymentAPI.app(req, res, next);
@@ -98,17 +178,25 @@ io.on('connection', (socket) => {
 
     // User looking for a match
     socket.on('find-match', (data) => {
-        const { textOnly, interests, selfGender, partnerGender, tier } = data || {};
+        const { textOnly, interests, selfGender, partnerGender, tier, userId, genderEntitlementToken } = data || {};
+        const normalizedUserId = normalizeUserId(userId);
+        const verifiedPremium = hasServerVerifiedPremium(normalizedUserId);
+        const requestedPartnerGender =
+            partnerGender === 'male' || partnerGender === 'female' ? partnerGender : 'random';
         removeWaitingUser(socket.id);
         const user = {
             id: socket.id,
+            userId: normalizedUserId,
             textOnly: !!textOnly,
             interests: interests ? interests.split(',').map(i => i.trim()) : [],
             selfGender: selfGender === 'male' || selfGender === 'female' ? selfGender : 'unspecified',
-            partnerGender: partnerGender === 'male' || partnerGender === 'female' ? partnerGender : 'random',
-            tier: tier === 'premium' || tier === 'vip' ? tier : 'free',
+            requestedPartnerGender,
+            partnerGender: requestedPartnerGender,
+            genderEntitlementToken: String(genderEntitlementToken || ''),
+            tier: verifiedPremium && (tier === 'premium' || tier === 'vip') ? tier : 'free',
             socket: socket
         };
+        refreshGenderFilterAccess(user);
 
         users.set(socket.id, user);
 
@@ -205,12 +293,16 @@ io.on('connection', (socket) => {
     });
 
     // User actions
-    socket.on('next', () => {
+    socket.on('next', (data = {}) => {
         leaveRoom(socket.id);
         removeWaitingUser(socket.id);
 
         const user = users.get(socket.id);
         if (!user) return;
+        if (data.genderEntitlementToken) {
+            user.genderEntitlementToken = String(data.genderEntitlementToken);
+        }
+        refreshGenderFilterAccess(user);
 
         const match = findMatch(user);
         if (match) {
@@ -260,7 +352,37 @@ io.on('connection', (socket) => {
     });
 });
 
+function normalizeUserId(value) {
+    const userId = String(value || '').trim();
+    return /^[A-Za-z0-9._-]{3,80}$/.test(userId) ? userId : 'anonymous';
+}
+
+function hasServerVerifiedPremium(userId) {
+    return Boolean(
+        paymentAPI &&
+        typeof paymentAPI.hasActiveSubscription === 'function' &&
+        paymentAPI.hasActiveSubscription(userId, 'premium')
+    );
+}
+
+function refreshGenderFilterAccess(user) {
+    if (!user) return false;
+
+    const hasGenderFilter = genderEntitlements.hasGenderFilterAccess({
+        userId: user.userId,
+        token: user.genderEntitlementToken,
+        hasPremium: hasServerVerifiedPremium(user.userId),
+        freeOverride: freeGenderFilterEnabled
+    });
+
+    user.partnerGender = hasGenderFilter ? user.requestedPartnerGender : 'random';
+    return hasGenderFilter;
+}
+
 function gendersCompatible(a, b) {
+    refreshGenderFilterAccess(a);
+    refreshGenderFilterAccess(b);
+
     const aWants = a && a.partnerGender ? a.partnerGender : 'random';
     const bWants = b && b.partnerGender ? b.partnerGender : 'random';
     const aIs = a && a.selfGender ? a.selfGender : 'unspecified';
