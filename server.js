@@ -181,15 +181,14 @@ io.on('connection', (socket) => {
         const { textOnly, interests, selfGender, partnerGender, tier, userId, genderEntitlementToken } = data || {};
         const normalizedUserId = normalizeUserId(userId);
         const verifiedPremium = hasServerVerifiedPremium(normalizedUserId);
-        const requestedPartnerGender =
-            partnerGender === 'male' || partnerGender === 'female' ? partnerGender : 'random';
+        const requestedPartnerGender = normalizePartnerGender(partnerGender);
         removeWaitingUser(socket.id);
         const user = {
             id: socket.id,
             userId: normalizedUserId,
             textOnly: !!textOnly,
             interests: interests ? interests.split(',').map(i => i.trim()) : [],
-            selfGender: selfGender === 'male' || selfGender === 'female' ? selfGender : 'unspecified',
+            selfGender: normalizeSelfGender(selfGender),
             requestedPartnerGender,
             partnerGender: requestedPartnerGender,
             genderEntitlementToken: String(genderEntitlementToken || ''),
@@ -317,6 +316,12 @@ io.on('connection', (socket) => {
         }
     });
 
+    socket.on('cancel-search', () => {
+        const removed = removeWaitingUser(socket.id);
+        console.log(`Search cancelled by ${socket.id}; removedFromQueue=${removed}; waiting=${waitingUsers.length}`);
+        socket.emit('search-cancelled');
+    });
+
     socket.on('stop', () => {
         leaveRoom(socket.id);
         socket.emit('disconnected');
@@ -357,6 +362,20 @@ function normalizeUserId(value) {
     return /^[A-Za-z0-9._-]{3,80}$/.test(userId) ? userId : 'anonymous';
 }
 
+function normalizeGenderValue(value) {
+    return String(value || '').trim().toLowerCase();
+}
+
+function normalizeSelfGender(value) {
+    const gender = normalizeGenderValue(value);
+    return gender === 'male' || gender === 'female' ? gender : 'unspecified';
+}
+
+function normalizePartnerGender(value) {
+    const gender = normalizeGenderValue(value);
+    return gender === 'male' || gender === 'female' ? gender : 'random';
+}
+
 function hasServerVerifiedPremium(userId) {
     return Boolean(
         paymentAPI &&
@@ -383,10 +402,10 @@ function gendersCompatible(a, b) {
     refreshGenderFilterAccess(a);
     refreshGenderFilterAccess(b);
 
-    const aWants = a && a.partnerGender ? a.partnerGender : 'random';
-    const bWants = b && b.partnerGender ? b.partnerGender : 'random';
-    const aIs = a && a.selfGender ? a.selfGender : 'unspecified';
-    const bIs = b && b.selfGender ? b.selfGender : 'unspecified';
+    const aWants = normalizePartnerGender(a && a.partnerGender);
+    const bWants = normalizePartnerGender(b && b.partnerGender);
+    const aIs = normalizeSelfGender(a && a.selfGender);
+    const bIs = normalizeSelfGender(b && b.selfGender);
 
     const aOk =
         aWants === 'random' || (bIs !== 'unspecified' && bIs === aWants);
@@ -397,17 +416,22 @@ function gendersCompatible(a, b) {
 }
 
 const findMatch = (user) => {
-    console.log(`Finding match for user ${user.id}, textOnly: ${user.textOnly}`);
+    console.log(
+        `Finding match for ${user.id}: own=${user.selfGender}, wants=${user.partnerGender}, textOnly=${user.textOnly}, queue=${waitingUsers.length}`
+    );
     pruneWaitingUsers();
 
-    const idx = waitingUsers.findIndex(
-        (w) =>
-            w.id !== user.id &&
-            w.textOnly === user.textOnly &&
-            w.socket.connected &&
-            !isUserInRoom(w.id) &&
-            gendersCompatible(user, w)
-    );
+    const idx = waitingUsers.findIndex((w) => {
+        const sameMode = w.textOnly === user.textOnly;
+        const available = w.id !== user.id && w.socket.connected && !isUserInRoom(w.id);
+        const compatible = available && sameMode && gendersCompatible(user, w);
+
+        console.log(
+            `Candidate ${w.id} for ${user.id}: own=${w.selfGender}, wants=${w.partnerGender}, sameMode=${sameMode}, available=${available}, compatible=${compatible}`
+        );
+
+        return compatible;
+    });
 
     if (idx === -1) {
         console.log(`No compatible peer waiting for ${user.id}`);
@@ -431,11 +455,14 @@ function queueUser(user) {
 }
 
 function removeWaitingUser(userId) {
+    let removed = 0;
     let idx = waitingUsers.findIndex((w) => w.id === userId);
     while (idx !== -1) {
         waitingUsers.splice(idx, 1);
+        removed += 1;
         idx = waitingUsers.findIndex((w) => w.id === userId);
     }
+    return removed;
 }
 
 function pruneWaitingUsers() {

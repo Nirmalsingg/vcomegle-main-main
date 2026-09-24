@@ -14,6 +14,7 @@ class VComingleApp {
         this.socketHandlersBound = false;
         this.disconnectHomeTimer = null;
         this.demoMatchTimer = null;
+        this.searchRequestId = 0;
 
         this.initializeElements();
         this.initializeEventListeners();
@@ -86,6 +87,12 @@ class VComingleApp {
         this.goHomeBtn.addEventListener('click', () => this.goHome());
         if (this.cancelSearchBtn) {
             this.cancelSearchBtn.addEventListener('click', () => this.cancelSearch());
+        }
+        if (this.selfGenderSelect) {
+            this.selfGenderSelect.addEventListener('change', () => this.restartSearchIfWaiting());
+        }
+        if (this.partnerGenderSelect) {
+            this.partnerGenderSelect.addEventListener('change', () => this.restartSearchIfWaiting());
         }
     }
 
@@ -170,6 +177,7 @@ class VComingleApp {
     }
 
     async startChat() {
+        const requestId = ++this.searchRequestId;
         this.syncChatModeFromUI();
         this.showScreen('connectingScreen');
         this.setConnectingDetail('Connecting to chat server…');
@@ -182,9 +190,11 @@ class VComingleApp {
             }
 
             await this.connectToSignalingServer();
+            if (requestId !== this.searchRequestId) return;
             this.setConnectingDetail('Waiting for a stranger to connect...');
             this.findMatch();
         } catch (error) {
+            if (requestId !== this.searchRequestId) return;
             console.error('Error starting chat:', error);
             const msg =
                 error && error.message
@@ -376,7 +386,9 @@ class VComingleApp {
             emit(event, data) {
                 console.log('Demo emit:', event, data);
                 if (event === 'find-match' || event === 'next') {
-                    setTimeout(() => {
+                    if (self.demoMatchTimer) clearTimeout(self.demoMatchTimer);
+                    self.demoMatchTimer = setTimeout(() => {
+                        self.demoMatchTimer = null;
                         self.currentRoom = 'demo-room';
                         self.strangerId = 'demo-stranger';
                         self.isInitiator = Math.random() < 0.5;
@@ -385,6 +397,12 @@ class VComingleApp {
                         if (self.chatMessages) self.chatMessages.innerHTML = '';
                         self.onMatchReady();
                     }, 1500 + Math.random() * 1500);
+                }
+                if (event === 'cancel-search' || event === 'stop') {
+                    if (self.demoMatchTimer) {
+                        clearTimeout(self.demoMatchTimer);
+                        self.demoMatchTimer = null;
+                    }
                 }
             },
             on() {},
@@ -427,6 +445,34 @@ class VComingleApp {
             return;
         }
         this.showNotification('Not connected to the chat server. Go back and try again.', 'error');
+        this.goHome();
+    }
+
+    isWaitingForMatch() {
+        return !!(this.connectingScreen && !this.connectingScreen.classList.contains('hidden'));
+    }
+
+    restartSearchIfWaiting() {
+        if (!this.isWaitingForMatch()) return;
+        if (this.socket && this.socket.connected) {
+            this.socket.emit('cancel-search');
+        }
+        this.setConnectingDetail('Updating your search...');
+        this.findMatch();
+    }
+
+    cancelSearch() {
+        this.searchRequestId += 1;
+
+        if (this.socket && this.socket.connected) {
+            this.socket.emit('cancel-search');
+        }
+        if (this.demoMatchTimer) {
+            clearTimeout(this.demoMatchTimer);
+            this.demoMatchTimer = null;
+        }
+
+        this.cleanupSession();
         this.goHome();
     }
 
@@ -743,6 +789,10 @@ class VComingleApp {
     }
 
     cleanupPeerAndMedia() {
+        if (this.demoMatchTimer) {
+            clearTimeout(this.demoMatchTimer);
+            this.demoMatchTimer = null;
+        }
         if (this.connectionCheckInterval) {
             clearInterval(this.connectionCheckInterval);
             this.connectionCheckInterval = null;
