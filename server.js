@@ -298,6 +298,12 @@ io.on('connection', (socket) => {
 
         const user = users.get(socket.id);
         if (!user) return;
+        if (Object.prototype.hasOwnProperty.call(data, 'selfGender')) {
+            user.selfGender = normalizeSelfGender(data.selfGender);
+        }
+        if (Object.prototype.hasOwnProperty.call(data, 'partnerGender')) {
+            user.requestedPartnerGender = normalizePartnerGender(data.partnerGender);
+        }
         if (data.genderEntitlementToken) {
             user.genderEntitlementToken = String(data.genderEntitlementToken);
         }
@@ -402,17 +408,14 @@ function gendersCompatible(a, b) {
     refreshGenderFilterAccess(a);
     refreshGenderFilterAccess(b);
 
-    const aWants = normalizePartnerGender(a && a.partnerGender);
-    const bWants = normalizePartnerGender(b && b.partnerGender);
-    const aIs = normalizeSelfGender(a && a.selfGender);
-    const bIs = normalizeSelfGender(b && b.selfGender);
+    return matchesRequestedGender(a, b) && matchesRequestedGender(b, a);
+}
 
-    const aOk =
-        aWants === 'random' || (bIs !== 'unspecified' && bIs === aWants);
-    const bOk =
-        bWants === 'random' || (aIs !== 'unspecified' && aIs === bWants);
+function matchesRequestedGender(requester, candidate) {
+    const requestedGender = normalizePartnerGender(requester && requester.partnerGender);
+    if (requestedGender === 'random') return true;
 
-    return aOk && bOk;
+    return normalizeSelfGender(candidate && candidate.selfGender) === requestedGender;
 }
 
 const findMatch = (user) => {

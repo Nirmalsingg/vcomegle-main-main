@@ -165,6 +165,26 @@ class VComingleApp {
         return 'random';
     }
 
+    validateGenderSelection() {
+        const selfGender = this.getSelfGender();
+        const partnerGender = this.getPartnerGenderPreference();
+        if (partnerGender !== 'random' && selfGender === 'unspecified') {
+            this.showNotification(
+                'Choose your gender to use a male or female match filter.',
+                'error'
+            );
+            return false;
+        }
+        return true;
+    }
+
+    getMatchSearchDetail(fallback) {
+        const partnerGender = this.getPartnerGenderPreference();
+        return partnerGender === 'random'
+            ? fallback
+            : `Looking for a ${partnerGender} stranger...`;
+    }
+
     applyChatLayout() {
         if (!this.chatScreen || !this.videoContainer) return;
         if (this.textOnly) {
@@ -183,8 +203,9 @@ class VComingleApp {
     async startChat() {
         const requestId = ++this.searchRequestId;
         this.syncChatModeFromUI();
+        if (!this.validateGenderSelection()) return;
         this.showScreen('connectingScreen');
-        this.setConnectingDetail('Connecting to chat server…');
+        this.setConnectingDetail(this.getMatchSearchDetail('Connecting to chat server…'));
 
         try {
             if (!this.textOnly) {
@@ -195,7 +216,7 @@ class VComingleApp {
 
             await this.connectToSignalingServer();
             if (requestId !== this.searchRequestId) return;
-            this.setConnectingDetail('Waiting for a stranger to connect...');
+            this.setConnectingDetail(this.getMatchSearchDetail('Waiting for a stranger to connect...'));
             this.findMatch();
         } catch (error) {
             if (requestId !== this.searchRequestId) return;
@@ -458,6 +479,13 @@ class VComingleApp {
 
     restartSearchIfWaiting() {
         if (!this.isWaitingForMatch()) return;
+        if (!this.validateGenderSelection()) {
+            if (this.socket && this.socket.connected) {
+                this.socket.emit('cancel-search');
+            }
+            this.setConnectingDetail('Choose your gender to use a male or female match filter.');
+            return;
+        }
         if (this.socket && this.socket.connected) {
             this.socket.emit('cancel-search');
         }
@@ -738,9 +766,10 @@ class VComingleApp {
     }
 
     async nextChat() {
+        if (!this.validateGenderSelection()) return;
         this.cleanupPeerAndMedia();
         this.showScreen('connectingScreen');
-        this.setConnectingDetail('Looking for another stranger…');
+        this.setConnectingDetail(this.getMatchSearchDetail('Looking for another stranger…'));
 
         try {
             if (!this.textOnly) {
@@ -752,6 +781,8 @@ class VComingleApp {
 
         if (this.socket && this.socket.connected) {
             this.socket.emit('next', {
+                selfGender: this.getSelfGender(),
+                partnerGender: this.getPartnerGenderPreference(),
                 genderEntitlementToken: this.getGenderEntitlementToken()
             });
         }
