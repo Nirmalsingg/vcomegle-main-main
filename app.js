@@ -279,9 +279,14 @@ class VComingleApp {
             typeof vcomingleMonetization.hasHDVideo === 'function' &&
             vcomingleMonetization.hasHDVideo();
         const constraints = {
-            video: premiumVideo
-                ? { width: { ideal: 1920 }, height: { ideal: 1080 } }
-                : { width: { ideal: 1280 }, height: { ideal: 720 } },
+            // Prefer a sharp front camera feed without making a lower-end phone fail capture.
+            video: {
+                width: { ideal: premiumVideo ? 1920 : 1280 },
+                height: { ideal: premiumVideo ? 1080 : 720 },
+                frameRate: { ideal: 30, max: 30 },
+                facingMode: { ideal: 'user' },
+                resizeMode: 'none'
+            },
             audio: true
         };
         this.localStream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -641,9 +646,12 @@ class VComingleApp {
 
         const outgoingStream = this.getOutgoingStream();
         if (outgoingStream) {
-            outgoingStream.getTracks().forEach((track) => {
-                this.peerConnection.addTrack(track, outgoingStream);
-            });
+            for (const track of outgoingStream.getTracks()) {
+                const sender = this.peerConnection.addTrack(track, outgoingStream);
+                if (track.kind === 'video') {
+                    await this.configureVideoSender(sender);
+                }
+            }
         }
 
         this.peerConnection.ontrack = (event) => {
@@ -1017,6 +1025,28 @@ class VComingleApp {
             .find((candidate) => candidate.track && candidate.track.kind === 'video');
         if (sender && sender.track !== videoTrack) {
             await sender.replaceTrack(videoTrack);
+            await this.configureVideoSender(sender);
+        }
+    }
+
+    async configureVideoSender(sender) {
+        if (!sender || !sender.track || sender.track.kind !== 'video') return;
+
+        try {
+            const parameters = sender.getParameters();
+            const encodings = parameters.encodings && parameters.encodings.length ? parameters.encodings : [{}];
+
+            encodings.forEach((encoding) => {
+                encoding.maxBitrate = 2500000;
+                encoding.maxFramerate = 30;
+            });
+
+            parameters.encodings = encodings;
+            parameters.degradationPreference = 'maintain-resolution';
+            await sender.setParameters(parameters);
+        } catch (error) {
+            // Browsers that do not expose sender tuning still use the requested camera settings.
+            console.warn('Could not apply preferred video sender settings:', error);
         }
     }
 

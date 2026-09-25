@@ -8,7 +8,7 @@
     "dev": "nodemon server.js",
     "serve": "http-server . -p 8080 -S -C cert.pem -K key.pem",
     "build": "echo 'No build step required for static files'",
-    "test": "echo 'No tests specified'"
+    "test": "node --test tests/video-quality.test.js"
   },
   "keywords": [
     "webrtc",

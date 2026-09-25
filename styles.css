@@ -629,7 +629,8 @@ body {
 
 .video-remote {
     display: block;
-    object-fit: cover;
+    /* Preserve portrait and landscape streams instead of cropping or zooming faces. */
+    object-fit: contain;
     object-position: center;
 }
 
