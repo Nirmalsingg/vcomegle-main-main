@@ -200,7 +200,16 @@ io.on('connection', (socket) => {
 
     // User looking for a match
     socket.on('find-match', (data) => {
-        const { textOnly, interests, selfGender, partnerGender, tier, userId, genderEntitlementToken } = data || {};
+        const {
+            textOnly,
+            interests,
+            selfGender,
+            partnerGender,
+            tier,
+            userId,
+            genderEntitlementToken,
+            deviceType
+        } = data || {};
         const existingUser = users.get(socket.id);
         if (existingUser && existingUser.moderationRestricted) {
             socket.emit('moderation-action', {
@@ -221,6 +230,7 @@ io.on('connection', (socket) => {
             requestedPartnerGender,
             partnerGender: requestedPartnerGender,
             genderEntitlementToken: String(genderEntitlementToken || ''),
+            deviceType: deviceType === 'mobile' ? 'mobile' : 'desktop',
             tier: verifiedPremium && (tier === 'premium' || tier === 'vip') ? tier : 'free',
             blockedUsers: new Set(existingUser ? existingUser.blockedUsers : []),
             reporterIds: new Set(existingUser ? existingUser.reporterIds : []),
@@ -581,11 +591,13 @@ function pairUsersInRoom(userA, userB, socketA, socketB) {
     socketA.emit('match-found', {
         roomId,
         strangerId: userB.id,
+        strangerDeviceType: userB.deviceType,
         isInitiator: userAIsInitiator
     });
     socketB.emit('match-found', {
         roomId,
         strangerId: userA.id,
+        strangerDeviceType: userA.deviceType,
         isInitiator: !userAIsInitiator
     });
 

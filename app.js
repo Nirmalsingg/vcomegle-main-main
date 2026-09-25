@@ -21,6 +21,7 @@ class VComingleApp {
         this.filterAnimationFrame = null;
         this.activeCameraFilter = 'none';
         this.isVideoEnabled = true;
+        this.remoteDeviceType = 'desktop';
         this.blockedStrangerIds = new Set();
 
         this.initializeElements();
@@ -174,6 +175,19 @@ class VComingleApp {
         return '';
     }
 
+    getDeviceType() {
+        const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent || '' : '';
+        const userAgentData = typeof navigator !== 'undefined' ? navigator.userAgentData : null;
+        return userAgentData?.mobile || /Android|iPhone|iPad|iPod|IEMobile|Opera Mini/i.test(userAgent)
+            ? 'mobile'
+            : 'desktop';
+    }
+
+    updateRemoteVideoLayout() {
+        if (!this.videoContainer) return;
+        this.videoContainer.classList.toggle('remote-mobile', this.remoteDeviceType === 'mobile');
+    }
+
     getGenderEntitlementToken() {
         if (
             typeof vcomingleMonetization !== 'undefined' &&
@@ -306,10 +320,12 @@ class VComingleApp {
         if (!this.socket || this.socketHandlersBound) return;
 
         this.socket.on('match-found', (data) => {
-            const { roomId, strangerId, isInitiator } = data;
+            const { roomId, strangerId, isInitiator, strangerDeviceType } = data;
             this.currentRoom = roomId;
             this.strangerId = strangerId;
             this.isInitiator = !!isInitiator;
+            this.remoteDeviceType = strangerDeviceType === 'mobile' ? 'mobile' : 'desktop';
+            this.updateRemoteVideoLayout();
 
             if (this.connectionCheckInterval) {
                 clearInterval(this.connectionCheckInterval);
@@ -504,6 +520,7 @@ class VComingleApp {
                 partnerGender: this.getPartnerGenderPreference(),
                 userId: this.getUserId(),
                 genderEntitlementToken: this.getGenderEntitlementToken(),
+                deviceType: this.getDeviceType(),
                 tier:
                     typeof vcomingleMonetization !== 'undefined' && vcomingleMonetization
                         ? vcomingleMonetization.userTier
@@ -520,6 +537,7 @@ class VComingleApp {
                 partnerGender: this.getPartnerGenderPreference(),
                 userId: this.getUserId(),
                 genderEntitlementToken: this.getGenderEntitlementToken(),
+                deviceType: this.getDeviceType(),
                 tier:
                     typeof vcomingleMonetization !== 'undefined' && vcomingleMonetization
                         ? vcomingleMonetization.userTier
@@ -658,6 +676,11 @@ class VComingleApp {
             if (event.streams && event.streams[0] && this.remoteVideo) {
                 this.remoteStream = event.streams[0];
                 this.remoteVideo.srcObject = this.remoteStream;
+                this.remoteVideo.addEventListener(
+                    'loadedmetadata',
+                    () => this.updateRemoteVideoLayout(),
+                    { once: true }
+                );
             }
         };
 
@@ -1101,6 +1124,8 @@ class VComingleApp {
         if (this.localVideo) this.localVideo.srcObject = null;
         if (this.remoteVideo) this.remoteVideo.srcObject = null;
         this.remoteStream = null;
+        this.remoteDeviceType = 'desktop';
+        this.updateRemoteVideoLayout();
         this.isVideoEnabled = true;
         this.currentRoom = null;
         this.strangerId = null;

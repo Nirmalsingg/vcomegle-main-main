@@ -600,8 +600,12 @@ body {
 }
 
 .video-wrapper-remote {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     width: 100%;
     height: 100%;
+    background: #fff;
 }
 
 .video-wrapper-local {
@@ -632,6 +636,15 @@ body {
     /* Preserve portrait and landscape streams instead of cropping or zooming faces. */
     object-fit: contain;
     object-position: center;
+    background: #fff;
+}
+
+/* A phone stranger stays in a phone-shaped frame; unused space remains neutral. */
+.video-container.remote-mobile .video-remote {
+    width: auto;
+    max-width: 100%;
+    height: 100%;
+    aspect-ratio: 9 / 16;
 }
 
 .video-label {
