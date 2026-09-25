@@ -174,8 +174,9 @@ for (const connection of ['mobile-to-PC', 'PC-to-mobile', 'mobile-to-mobile', 'P
     });
 }
 
-test('remote video preserves the full camera frame without crop zooming', () => {
-    assert.match(styles, /\.video-remote\s*\{[^}]*object-fit:\s*contain;/s);
+test('remote video fills its stage and crops from the center when needed', () => {
+    assert.match(styles, /\.video-local,\s*\.video-remote\s*\{[^}]*width:\s*100%;[^}]*height:\s*100%;/s);
+    assert.match(styles, /\.video-remote\s*\{[^}]*object-fit:\s*cover;[^}]*object-position:\s*center;/s);
     assert.match(styles, /\.video-local\s*\{[^}]*object-fit:\s*contain;/s);
 });
 
@@ -187,9 +188,9 @@ test('matches carry a mobile device hint for portrait remote rendering', () => {
     assert.match(serverSource, /strangerDeviceType:\s*userA\.deviceType/);
 });
 
-test('mobile strangers render inside a white portrait frame', () => {
-    assert.match(styles, /\.video-wrapper-remote\s*\{[^}]*background:\s*#fff;/s);
-    assert.match(styles, /\.video-container\.remote-mobile \.video-remote\s*\{[^}]*aspect-ratio:\s*9\s*\/\s*16;/s);
+test('remote video stage has no white portrait framing', () => {
+    assert.match(styles, /\.video-wrapper-remote\s*\{[^}]*width:\s*100%;[^}]*height:\s*100%;[^}]*background:\s*#111827;/s);
+    assert.doesNotMatch(styles, /\.video-container\.remote-mobile \.video-remote/);
 });
 
 test('every mobile stream receives the phone-shaped remote frame', () => {
