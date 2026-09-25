@@ -5,6 +5,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const path = require('path');
+const fs = require('fs');
 const RewardedEntitlements = require('./rewarded-entitlements');
 
 let PaymentAPI = null;
@@ -168,6 +169,27 @@ app.use(express.static(path.join(__dirname), {
 const users = new Map();
 const rooms = new Map();
 const waitingUsers = [];
+const moderationReports = [];
+const REPORT_REASONS = new Set([
+    'sexual-content',
+    'child-safety',
+    'harassment',
+    'violence',
+    'scam',
+    'privacy',
+    'other'
+]);
+const MODERATION_REPORT_THRESHOLD = 3;
+const MAX_MODERATION_REPORTS = 1000;
+const moderationReportFile = process.env.MODERATION_REPORT_FILE || path.join(__dirname, 'data', 'moderation-reports.ndjson');
+
+app.get('/api/moderation/reports', (req, res) => {
+    const moderationKey = process.env.MODERATION_API_KEY;
+    if (!moderationKey || req.get('X-Moderation-Key') !== moderationKey) {
+        return res.status(403).json({ success: false, message: 'Forbidden.' });
+    }
+    return res.json({ success: true, reports: moderationReports });
+});
 
 // Socket.io connection handling
 io.on('connection', (socket) => {
@@ -179,6 +201,13 @@ io.on('connection', (socket) => {
     // User looking for a match
     socket.on('find-match', (data) => {
         const { textOnly, interests, selfGender, partnerGender, tier, userId, genderEntitlementToken } = data || {};
+        const existingUser = users.get(socket.id);
+        if (existingUser && existingUser.moderationRestricted) {
+            socket.emit('moderation-action', {
+                message: 'This session is unavailable while moderation reviews reports.'
+            });
+            return;
+        }
         const normalizedUserId = normalizeUserId(userId);
         const verifiedPremium = hasServerVerifiedPremium(normalizedUserId);
         const requestedPartnerGender = normalizePartnerGender(partnerGender);
@@ -193,6 +222,9 @@ io.on('connection', (socket) => {
             partnerGender: requestedPartnerGender,
             genderEntitlementToken: String(genderEntitlementToken || ''),
             tier: verifiedPremium && (tier === 'premium' || tier === 'vip') ? tier : 'free',
+            blockedUsers: new Set(existingUser ? existingUser.blockedUsers : []),
+            reporterIds: new Set(existingUser ? existingUser.reporterIds : []),
+            moderationRestricted: Boolean(existingUser && existingUser.moderationRestricted),
             socket: socket
         };
         refreshGenderFilterAccess(user);
@@ -333,15 +365,37 @@ io.on('connection', (socket) => {
         socket.emit('disconnected');
     });
 
-    socket.on('report', (data) => {
+    socket.on('report', (data = {}) => {
         const { roomId } = data;
         const room = rooms.get(roomId);
-        
-        if (room) {
+        const reporter = users.get(socket.id);
+
+        if (room && reporter && isRoomParticipant(room, socket.id)) {
             const otherUser = room.users.find(u => u.id !== socket.id);
             if (otherUser) {
-                console.log(`User ${socket.id} reported user ${otherUser.id}`);
-                // In production, you'd log this for moderation
+                const reason = REPORT_REASONS.has(data.reason) ? data.reason : 'other';
+                const details = normalizeReportDetails(data.details);
+                if (data.blockUser !== false) reporter.blockedUsers.add(otherUser.id);
+
+                const isNewReporter = !otherUser.reporterIds.has(socket.id);
+                otherUser.reporterIds.add(socket.id);
+                recordModerationReport({
+                    roomId,
+                    reporterId: socket.id,
+                    reportedUserId: otherUser.id,
+                    reason,
+                    details,
+                    createdAt: new Date().toISOString()
+                });
+                console.log(`User ${socket.id} reported user ${otherUser.id}: ${reason}`);
+
+                if (isNewReporter && otherUser.reporterIds.size >= MODERATION_REPORT_THRESHOLD) {
+                    otherUser.moderationRestricted = true;
+                    otherUser.socket.emit('moderation-action', {
+                        message: 'This session is unavailable while moderation reviews reports.'
+                    });
+                    leaveRoom(otherUser.id);
+                }
             }
         }
         
@@ -380,6 +434,30 @@ function normalizeSelfGender(value) {
 function normalizePartnerGender(value) {
     const gender = normalizeGenderValue(value);
     return gender === 'male' || gender === 'female' ? gender : 'random';
+}
+
+function normalizeReportDetails(value) {
+    return String(value || '')
+        .replace(/[\u0000-\u001F\u007F]/g, ' ')
+        .trim()
+        .slice(0, 500);
+}
+
+function recordModerationReport(report) {
+    moderationReports.push(report);
+    if (moderationReports.length > MAX_MODERATION_REPORTS) moderationReports.shift();
+
+    fs.mkdir(path.dirname(moderationReportFile), { recursive: true }, (directoryError) => {
+        if (directoryError) {
+            console.error('Could not create moderation report directory:', directoryError.message);
+            return;
+        }
+        fs.appendFile(moderationReportFile, `${JSON.stringify(report)}\n`, 'utf8', (writeError) => {
+            if (writeError) {
+                console.error('Could not persist moderation report:', writeError.message);
+            }
+        });
+    });
 }
 
 function hasServerVerifiedPremium(userId) {
@@ -427,7 +505,8 @@ const findMatch = (user) => {
     const idx = waitingUsers.findIndex((w) => {
         const sameMode = w.textOnly === user.textOnly;
         const available = w.id !== user.id && w.socket.connected && !isUserInRoom(w.id);
-        const compatible = available && sameMode && gendersCompatible(user, w);
+        const notBlocked = !user.blockedUsers.has(w.id) && !w.blockedUsers.has(user.id);
+        const compatible = available && sameMode && notBlocked && gendersCompatible(user, w);
 
         console.log(
             `Candidate ${w.id} for ${user.id}: own=${w.selfGender}, wants=${w.partnerGender}, sameMode=${sameMode}, available=${available}, compatible=${compatible}`
@@ -482,6 +561,10 @@ function isUserInRoom(userId) {
         if (room.users.some((u) => u.id === userId)) return true;
     }
     return false;
+}
+
+function isRoomParticipant(room, userId) {
+    return Boolean(room && room.users.some((user) => user.id === userId));
 }
 
 function pairUsersInRoom(userA, userB, socketA, socketB) {

@@ -14,6 +14,14 @@ class VComingleApp {
         this.socketHandlersBound = false;
         this.demoMatchTimer = null;
         this.searchRequestId = 0;
+        this.filteredStream = null;
+        this.filterSourceVideo = null;
+        this.filterCanvas = null;
+        this.filterContext = null;
+        this.filterAnimationFrame = null;
+        this.activeCameraFilter = 'none';
+        this.isVideoEnabled = true;
+        this.blockedStrangerIds = new Set();
 
         this.initializeElements();
         this.initializeEventListeners();
@@ -42,6 +50,14 @@ class VComingleApp {
         this.toggleAudioBtn = document.getElementById('toggleAudio');
         this.toggleGiftsBtn = document.getElementById('toggleGifts');
         this.cameraFilterSelect = document.getElementById('cameraFilter');
+        this.ageConfirmation = document.getElementById('ageConfirmation');
+        this.reportDialog = document.getElementById('reportDialog');
+        this.reportForm = document.getElementById('reportForm');
+        this.reportReason = document.getElementById('reportReason');
+        this.reportDetails = document.getElementById('reportDetails');
+        this.blockReportedUser = document.getElementById('blockReportedUser');
+        this.closeReportDialogBtn = document.getElementById('closeReportDialog');
+        this.cancelReportBtn = document.getElementById('cancelReport');
         this.findNewBtn = document.getElementById('findNew');
         this.goHomeBtn = document.getElementById('goHome');
         this.cancelSearchBtn = document.getElementById('cancelSearch');
@@ -83,8 +99,25 @@ class VComingleApp {
             this.toggleGiftsBtn.addEventListener('click', () => this.toggleGifts());
         }
         if (this.cameraFilterSelect) {
-            this.cameraFilterSelect.addEventListener('change', () => this.applyCameraFilter());
+            this.cameraFilterSelect.addEventListener('change', () => {
+                this.applyCameraFilter().catch((error) => {
+                    console.error('Could not update camera filter:', error);
+                    this.showNotification('Could not apply that camera filter.', 'error');
+                });
+            });
             this.applyCameraFilter();
+        }
+        if (this.reportForm) {
+            this.reportForm.addEventListener('submit', (event) => {
+                event.preventDefault();
+                this.submitReport();
+            });
+        }
+        if (this.closeReportDialogBtn) {
+            this.closeReportDialogBtn.addEventListener('click', () => this.closeReportDialog());
+        }
+        if (this.cancelReportBtn) {
+            this.cancelReportBtn.addEventListener('click', () => this.closeReportDialog());
         }
 
         this.findNewBtn.addEventListener('click', () => this.startChat());
@@ -178,6 +211,15 @@ class VComingleApp {
         return true;
     }
 
+    validateAgeConfirmation() {
+        if (this.ageConfirmation && !this.ageConfirmation.checked) {
+            this.showNotification('You must confirm that you are 18 or older before starting a chat.', 'error');
+            this.ageConfirmation.focus();
+            return false;
+        }
+        return true;
+    }
+
     getMatchSearchDetail(fallback) {
         const partnerGender = this.getPartnerGenderPreference();
         return partnerGender === 'random'
@@ -203,7 +245,7 @@ class VComingleApp {
     async startChat() {
         const requestId = ++this.searchRequestId;
         this.syncChatModeFromUI();
-        if (!this.validateGenderSelection()) return;
+        if (!this.validateGenderSelection() || !this.validateAgeConfirmation()) return;
         this.showScreen('connectingScreen');
         this.setConnectingDetail(this.getMatchSearchDetail('Connecting to chat server…'));
 
@@ -243,7 +285,9 @@ class VComingleApp {
             audio: true
         };
         this.localStream = await navigator.mediaDevices.getUserMedia(constraints);
+        this.isVideoEnabled = true;
         if (this.localVideo) this.localVideo.srcObject = this.localStream;
+        await this.applyCameraFilter();
     }
 
     getSocketUrl() {
@@ -303,6 +347,15 @@ class VComingleApp {
 
         this.socket.on('stranger-disconnected', () => {
             this.onStrangerDisconnected();
+        });
+
+        this.socket.on('moderation-action', (payload) => {
+            this.showNotification(
+                (payload && payload.message) || 'This session is unavailable while moderation reviews reports.',
+                'error'
+            );
+            this.cleanupSession();
+            this.goHome();
         });
 
         this.socket.on('disconnected', () => {
@@ -552,6 +605,10 @@ class VComingleApp {
         }, 1000);
     }
 
+    getOutgoingStream() {
+        return this.filteredStream || this.localStream;
+    }
+
     async createPeerConnection() {
         if (this.textOnly) return;
 
@@ -582,9 +639,10 @@ class VComingleApp {
 
         this.peerConnection = new RTCPeerConnection(configuration);
 
-        if (this.localStream) {
-            this.localStream.getTracks().forEach((track) => {
-                this.peerConnection.addTrack(track, this.localStream);
+        const outgoingStream = this.getOutgoingStream();
+        if (outgoingStream) {
+            outgoingStream.getTracks().forEach((track) => {
+                this.peerConnection.addTrack(track, outgoingStream);
             });
         }
 
@@ -797,26 +855,65 @@ class VComingleApp {
     }
 
     reportUser() {
-        if (!confirm('Report this user and leave the chat?')) return;
-        if (this.socket && this.socket.connected && this.currentRoom) {
-            this.socket.emit('report', { roomId: this.currentRoom });
+        if (!this.currentRoom || !this.strangerId) {
+            this.showNotification('There is no active chat to report.', 'error');
+            return;
         }
+        if (this.reportDetails) this.reportDetails.value = '';
+        if (this.blockReportedUser) this.blockReportedUser.checked = true;
+        if (this.reportDialog) {
+            this.reportDialog.classList.remove('hidden');
+            if (this.reportReason) this.reportReason.focus();
+        }
+    }
+
+    closeReportDialog() {
+        if (!this.reportDialog) return;
+        this.reportDialog.classList.add('hidden');
+        if (this.reportBtn) this.reportBtn.focus();
+    }
+
+    submitReport() {
+        if (!this.currentRoom || !this.strangerId || !this.reportReason) {
+            this.closeReportDialog();
+            this.showNotification('The chat is no longer active.', 'error');
+            return;
+        }
+
+        const reason = this.reportReason.value;
+        const details = this.reportDetails ? this.reportDetails.value.trim() : '';
+        const shouldBlock = !this.blockReportedUser || this.blockReportedUser.checked;
+
+        if (shouldBlock) this.blockedStrangerIds.add(this.strangerId);
+        if (this.socket && this.socket.connected && this.currentRoom) {
+            this.socket.emit('report', {
+                roomId: this.currentRoom,
+                reason,
+                details,
+                blockUser: shouldBlock
+            });
+        }
+        this.closeReportDialog();
+        this.showNotification('Your report was submitted. Thanks for helping keep VComingle safe.', 'success');
         this.cleanupSession();
         this.goHome();
     }
 
     toggleVideo() {
         if (!this.localStream) return;
-        const videoTrack = this.localStream.getVideoTracks()[0];
-        if (videoTrack) {
-            videoTrack.enabled = !videoTrack.enabled;
-            this.toggleVideoBtn.style.opacity = videoTrack.enabled ? '1' : '0.5';
+        this.isVideoEnabled = !this.isVideoEnabled;
+        this.localStream.getVideoTracks().forEach((track) => {
+            track.enabled = this.isVideoEnabled;
+        });
+        if (this.filteredStream) {
+            this.filteredStream.getVideoTracks().forEach((track) => {
+                track.enabled = this.isVideoEnabled;
+            });
         }
+        this.toggleVideoBtn.style.opacity = this.isVideoEnabled ? '1' : '0.5';
     }
 
-    applyCameraFilter() {
-        if (!this.localVideo) return;
-
+    getCameraFilterCss(filter) {
         const filters = {
             none: 'none',
             warm: 'sepia(0.18) saturate(1.15) contrast(1.04)',
@@ -824,10 +921,116 @@ class VComingleApp {
             mono: 'grayscale(1) contrast(1.12)',
             vivid: 'saturate(1.45) contrast(1.08)'
         };
-        const selectedFilter = this.cameraFilterSelect && this.cameraFilterSelect.value;
-        this.localVideo.style.filter = filters[selectedFilter] || filters.none;
+        return filters[filter] || filters.none;
+    }
+
+    async applyCameraFilter() {
+        const selectedFilter = (this.cameraFilterSelect && this.cameraFilterSelect.value) || 'none';
+        this.activeCameraFilter = selectedFilter;
         const filterControl = this.cameraFilterSelect && this.cameraFilterSelect.closest('.camera-filter-control');
         if (filterControl) filterControl.dataset.filter = selectedFilter || 'none';
+
+        if (!this.localStream || !this.localVideo) return;
+
+        if (selectedFilter === 'none') {
+            this.stopFilteredVideoPipeline();
+            this.localVideo.srcObject = this.localStream;
+            await this.replaceOutgoingVideoTrack(this.localStream.getVideoTracks()[0] || null);
+            return;
+        }
+
+        await this.startFilteredVideoPipeline();
+        await this.replaceOutgoingVideoTrack(
+            this.filteredStream && this.filteredStream.getVideoTracks()[0]
+        );
+    }
+
+    async startFilteredVideoPipeline() {
+        if (!this.localStream) return;
+
+        if (!this.filterSourceVideo) {
+            this.filterSourceVideo = document.createElement('video');
+            this.filterSourceVideo.autoplay = true;
+            this.filterSourceVideo.muted = true;
+            this.filterSourceVideo.playsInline = true;
+            this.filterSourceVideo.srcObject = this.localStream;
+            try {
+                await this.filterSourceVideo.play();
+            } catch (_) {
+                // Playback will start once the browser has enough media data.
+            }
+        }
+
+        if (!this.filteredStream) {
+            await this.waitForVideoDimensions(this.filterSourceVideo);
+            this.filterCanvas = document.createElement('canvas');
+            this.filterCanvas.width = this.filterSourceVideo.videoWidth || 1280;
+            this.filterCanvas.height = this.filterSourceVideo.videoHeight || 720;
+            this.filterContext = this.filterCanvas.getContext('2d');
+            if (!this.filterContext || typeof this.filterCanvas.captureStream !== 'function') {
+                throw new Error('Camera filters are not supported by this browser.');
+            }
+
+            const filteredVideoTrack = this.filterCanvas.captureStream(30).getVideoTracks()[0];
+            filteredVideoTrack.enabled = this.isVideoEnabled;
+            this.filteredStream = new MediaStream([
+                ...this.localStream.getAudioTracks(),
+                filteredVideoTrack
+            ]);
+            this.renderFilteredFrame();
+        }
+
+        this.localVideo.srcObject = this.filteredStream;
+    }
+
+    waitForVideoDimensions(video) {
+        if (video.videoWidth && video.videoHeight) return Promise.resolve();
+        return new Promise((resolve) => {
+            const ready = () => {
+                video.removeEventListener('loadedmetadata', ready);
+                resolve();
+            };
+            video.addEventListener('loadedmetadata', ready, { once: true });
+            setTimeout(ready, 1200);
+        });
+    }
+
+    renderFilteredFrame() {
+        if (!this.filterContext || !this.filterCanvas || !this.filterSourceVideo || !this.filteredStream) {
+            return;
+        }
+        const width = this.filterSourceVideo.videoWidth || this.filterCanvas.width;
+        const height = this.filterSourceVideo.videoHeight || this.filterCanvas.height;
+        if (width !== this.filterCanvas.width || height !== this.filterCanvas.height) {
+            this.filterCanvas.width = width;
+            this.filterCanvas.height = height;
+        }
+        this.filterContext.filter = this.getCameraFilterCss(this.activeCameraFilter);
+        this.filterContext.drawImage(this.filterSourceVideo, 0, 0, this.filterCanvas.width, this.filterCanvas.height);
+        this.filterAnimationFrame = requestAnimationFrame(() => this.renderFilteredFrame());
+    }
+
+    async replaceOutgoingVideoTrack(videoTrack) {
+        if (!this.peerConnection || !videoTrack) return;
+        const sender = this.peerConnection
+            .getSenders()
+            .find((candidate) => candidate.track && candidate.track.kind === 'video');
+        if (sender && sender.track !== videoTrack) {
+            await sender.replaceTrack(videoTrack);
+        }
+    }
+
+    stopFilteredVideoPipeline() {
+        if (this.filterAnimationFrame) {
+            cancelAnimationFrame(this.filterAnimationFrame);
+            this.filterAnimationFrame = null;
+        }
+        if (this.filteredStream) {
+            this.filteredStream.getVideoTracks().forEach((track) => track.stop());
+            this.filteredStream = null;
+        }
+        this.filterCanvas = null;
+        this.filterContext = null;
     }
 
     toggleAudio() {
@@ -856,6 +1059,11 @@ class VComingleApp {
             }
             this.peerConnection = null;
         }
+        this.stopFilteredVideoPipeline();
+        if (this.filterSourceVideo) {
+            this.filterSourceVideo.srcObject = null;
+            this.filterSourceVideo = null;
+        }
         if (this.localStream) {
             this.localStream.getTracks().forEach((t) => t.stop());
             this.localStream = null;
@@ -863,6 +1071,7 @@ class VComingleApp {
         if (this.localVideo) this.localVideo.srcObject = null;
         if (this.remoteVideo) this.remoteVideo.srcObject = null;
         this.remoteStream = null;
+        this.isVideoEnabled = true;
         this.currentRoom = null;
         this.strangerId = null;
         this.isConnected = false;

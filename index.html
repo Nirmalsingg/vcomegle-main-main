@@ -1,10 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <script id="aclib" type="text/javascript" src="//acscdn.com/script/aclib.js"></script>
-    
-
-    
     <title>VComingle - Free Random Video Chat & Anonymous Text Chat</title>
 
 <meta name="description" content="VComingle is a free random video chat platform where you can meet and chat with new people online anonymously.">
@@ -12,26 +8,6 @@
 <meta name="keywords" content="random video chat, free video chat, talk to strangers, anonymous chat, meet new people">
 
 <link rel="canonical" href="https://vcomingle.in/">
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6001571800966471"
-     crossorigin="anonymous"></script>
-   
-    <script type="text/javascript">
-    (function(c,l,a,r,i,t,y){
-        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
-        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
-        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
-    })(window, document, "clarity", "script", "wtwixi7zgj");
-</script>
-    <!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-2REEHM297S"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-
-  gtag('config', 'G-2REEHM297S');
-</script>
-    
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     
@@ -68,14 +44,6 @@
     </script>
 </head>
 <body>
-    <div>
-    <script type="text/javascript">
-        aclib.runBanner({
-            zoneId: '12219262',
-        });
-    </script>
-</div>
-
     <div class="app-container">
         <!-- Header -->
         <header class="header">
@@ -154,6 +122,10 @@
                                 Upgrade to Premium to unlock the gender filter.
                             </div>
                         </div>
+                        <label class="age-confirmation">
+                            <input type="checkbox" id="ageConfirmation" required>
+                            <span>I confirm that I am 18 or older and agree to the <a href="/terms.html">Terms</a>, <a href="/privacy.html">Privacy Policy</a>, and <a href="/content-policy.html">Content Policy</a>.</span>
+                        </label>
                     </div>
 
                     <button type="button" id="startChat" class="btn btn-primary">Start chatting</button>
@@ -200,7 +172,7 @@
                 <div class="controls">
                     <button id="nextButton" class="btn btn-secondary">Next</button>
                     <button id="stopButton" class="btn btn-danger">Stop</button>
-                    <button id="reportButton" class="btn btn-warning">Report</button>
+                    <button id="reportButton" class="btn btn-warning" type="button">Report</button>
                     <button id="toggleVideo" class="btn btn-control">📹</button>
                     <button id="toggleAudio" class="btn btn-control">🎤</button>
                     <label class="camera-filter-control" for="cameraFilter" data-filter="none">
@@ -241,6 +213,38 @@
                             <span class="gift-cost">Crown</span>
                         </button>
                     </div>
+                </div>
+
+                <div id="reportDialog" class="report-dialog hidden" role="dialog" aria-modal="true" aria-labelledby="reportDialogTitle" aria-describedby="reportDialogDescription">
+                    <form id="reportForm" class="report-dialog-card">
+                        <div class="report-dialog-heading">
+                            <div>
+                                <h2 id="reportDialogTitle">Report this user</h2>
+                                <p id="reportDialogDescription">Choose the best reason. This report ends the current chat and is sent to moderation.</p>
+                            </div>
+                            <button id="closeReportDialog" class="icon-button" type="button" aria-label="Close report dialog">&times;</button>
+                        </div>
+                        <label for="reportReason">Reason</label>
+                        <select id="reportReason" required>
+                            <option value="sexual-content">Sexual content or nudity</option>
+                            <option value="child-safety">Child safety concern</option>
+                            <option value="harassment">Harassment, hate, or bullying</option>
+                            <option value="violence">Violence, threats, or self-harm</option>
+                            <option value="scam">Scam, spam, or malicious links</option>
+                            <option value="privacy">Impersonation or privacy violation</option>
+                            <option value="other">Other policy violation</option>
+                        </select>
+                        <label for="reportDetails">Details (optional)</label>
+                        <textarea id="reportDetails" maxlength="500" rows="4" placeholder="Briefly describe what happened. Do not include your contact details."></textarea>
+                        <label class="report-block-choice">
+                            <input id="blockReportedUser" type="checkbox" checked>
+                            <span>Block this user from matching with me again in this session</span>
+                        </label>
+                        <div class="report-dialog-actions">
+                            <button id="cancelReport" class="btn btn-secondary" type="button">Cancel</button>
+                            <button class="btn btn-warning" type="submit">Submit report and leave</button>
+                        </div>
+                    </form>
                 </div>
             </div>
 
