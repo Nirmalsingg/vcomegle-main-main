@@ -628,8 +628,9 @@ body {
 }
 
 .video-local {
-    /* Keep the complete local camera frame visible, including portrait phone feeds. */
-    object-fit: contain;
+    /* Fill the preview frame so portrait camera feeds do not leave black side bars. */
+    object-fit: cover;
+    object-position: center;
 }
 
 .video-remote {

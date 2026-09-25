@@ -174,10 +174,10 @@ for (const connection of ['mobile-to-PC', 'PC-to-mobile', 'mobile-to-mobile', 'P
     });
 }
 
-test('remote video fills its stage and crops from the center when needed', () => {
+test('video streams fill their stages and crop from the center when needed', () => {
     assert.match(styles, /\.video-local,\s*\.video-remote\s*\{[^}]*width:\s*100%;[^}]*height:\s*100%;/s);
     assert.match(styles, /\.video-remote\s*\{[^}]*object-fit:\s*cover;[^}]*object-position:\s*center;/s);
-    assert.match(styles, /\.video-local\s*\{[^}]*object-fit:\s*contain;/s);
+    assert.match(styles, /\.video-local\s*\{[^}]*object-fit:\s*cover;[^}]*object-position:\s*center;/s);
 });
 
 test('matches carry a mobile device hint for portrait remote rendering', () => {
