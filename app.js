@@ -185,15 +185,7 @@ class VComingleApp {
 
     updateRemoteVideoLayout() {
         if (!this.videoContainer) return;
-        const isPortraitRemote =
-            this.remoteVideo &&
-            this.remoteVideo.videoWidth > 0 &&
-            this.remoteVideo.videoHeight > this.remoteVideo.videoWidth;
         this.videoContainer.classList.toggle('remote-mobile', this.remoteDeviceType === 'mobile');
-        this.videoContainer.classList.toggle(
-            'remote-mobile-portrait',
-            this.remoteDeviceType === 'mobile' && isPortraitRemote
-        );
     }
 
     getGenderEntitlementToken() {
@@ -303,12 +295,13 @@ class VComingleApp {
         const isMobile = this.getDeviceType() === 'mobile';
         const preferredLongEdge = premiumVideo ? 1920 : 1280;
         const preferredShortEdge = premiumVideo ? 1080 : 720;
+        const preferredMobileHeight = premiumVideo ? 1440 : 960;
         const constraints = {
-            // Preserve the natural camera orientation so mobile browsers do not crop a portrait sensor into 16:9.
+            // Prefer the native 4:3 phone-camera field of view to avoid a cropped selfie feed.
             video: {
-                width: { ideal: isMobile ? preferredShortEdge : preferredLongEdge },
-                height: { ideal: isMobile ? preferredLongEdge : preferredShortEdge },
-                aspectRatio: { ideal: isMobile ? 9 / 16 : 16 / 9 },
+                width: { ideal: preferredLongEdge },
+                height: { ideal: isMobile ? preferredMobileHeight : preferredShortEdge },
+                aspectRatio: { ideal: isMobile ? 4 / 3 : 16 / 9 },
                 frameRate: { ideal: 30, max: 30 },
                 facingMode: { ideal: 'user' },
                 resizeMode: 'none'
@@ -317,10 +310,29 @@ class VComingleApp {
         };
         this.localStream = await navigator.mediaDevices.getUserMedia(constraints);
         const videoTrack = this.localStream.getVideoTracks()[0];
+        await this.resetCameraZoom(videoTrack);
         if (videoTrack && 'contentHint' in videoTrack) videoTrack.contentHint = 'motion';
         this.isVideoEnabled = true;
         if (this.localVideo) this.localVideo.srcObject = this.localStream;
         await this.applyCameraFilter();
+    }
+
+    async resetCameraZoom(videoTrack) {
+        if (
+            !videoTrack ||
+            typeof videoTrack.getCapabilities !== 'function' ||
+            typeof videoTrack.applyConstraints !== 'function'
+        ) {
+            return;
+        }
+
+        try {
+            const capabilities = videoTrack.getCapabilities();
+            if (!capabilities.zoom || !Number.isFinite(capabilities.zoom.min)) return;
+            await videoTrack.applyConstraints({ advanced: [{ zoom: capabilities.zoom.min }] });
+        } catch (_) {
+            // Zoom controls are optional and unsupported cameras keep their normal browser-selected view.
+        }
     }
 
     getSocketUrl() {

@@ -640,8 +640,8 @@ body {
     background: #fff;
 }
 
-/* A phone stranger stays in a phone-shaped frame only when their stream is portrait. */
-.video-container.remote-mobile.remote-mobile-portrait .video-remote {
+/* A phone stranger stays in a phone-shaped frame; all source shapes are contained without cropping. */
+.video-container.remote-mobile .video-remote {
     width: auto;
     max-width: 100%;
     height: 100%;

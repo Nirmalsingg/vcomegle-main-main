@@ -91,7 +91,7 @@ test('requests a sharp front-facing camera feed without mandatory device-specifi
     assert.equal(app.localVideo.srcObject, stream);
 });
 
-test('requests a portrait front-camera feed on mobile without sensor cropping', async () => {
+test('requests a native mobile front-camera field of view without sensor cropping', async () => {
     let constraints;
     const stream = {
         getVideoTracks() {
@@ -114,9 +114,9 @@ test('requests a portrait front-camera feed on mobile without sensor cropping', 
 
     await app.initializeLocalMedia();
 
-    assert.equal(constraints.video.width.ideal, 720);
-    assert.equal(constraints.video.height.ideal, 1280);
-    assert.equal(constraints.video.aspectRatio.ideal, 9 / 16);
+    assert.equal(constraints.video.width.ideal, 1280);
+    assert.equal(constraints.video.height.ideal, 960);
+    assert.equal(constraints.video.aspectRatio.ideal, 4 / 3);
     assert.equal(constraints.video.resizeMode, 'none');
 });
 
@@ -169,7 +169,7 @@ for (const connection of ['mobile-to-PC', 'PC-to-mobile', 'mobile-to-mobile', 'P
 
         await app.initializeLocalMedia();
 
-        assert.equal(constraints.video.aspectRatio.ideal, mobileSender ? 9 / 16 : 16 / 9);
+        assert.equal(constraints.video.aspectRatio.ideal, mobileSender ? 4 / 3 : 16 / 9);
         assert.equal(constraints.video.resizeMode, 'none');
     });
 }
@@ -189,16 +189,14 @@ test('matches carry a mobile device hint for portrait remote rendering', () => {
 
 test('mobile strangers render inside a white portrait frame', () => {
     assert.match(styles, /\.video-wrapper-remote\s*\{[^}]*background:\s*#fff;/s);
-    assert.match(styles, /\.video-container\.remote-mobile\.remote-mobile-portrait \.video-remote\s*\{[^}]*aspect-ratio:\s*9\s*\/\s*16;/s);
-    assert.match(appSource, /remote-mobile-portrait/);
+    assert.match(styles, /\.video-container\.remote-mobile \.video-remote\s*\{[^}]*aspect-ratio:\s*9\s*\/\s*16;/s);
 });
 
-test('only portrait mobile streams receive the phone-shaped remote frame', () => {
+test('every mobile stream receives the phone-shaped remote frame', () => {
     const App = loadAppClass({});
     const classes = new Map();
     const app = Object.create(App.prototype);
     app.remoteDeviceType = 'mobile';
-    app.remoteVideo = { videoWidth: 720, videoHeight: 1280 };
     app.videoContainer = {
         classList: {
             toggle(name, enabled) {
@@ -209,10 +207,20 @@ test('only portrait mobile streams receive the phone-shaped remote frame', () =>
 
     app.updateRemoteVideoLayout();
     assert.equal(classes.get('remote-mobile'), true);
-    assert.equal(classes.get('remote-mobile-portrait'), true);
+});
 
-    app.remoteVideo = { videoWidth: 1280, videoHeight: 720 };
-    app.updateRemoteVideoLayout();
-    assert.equal(classes.get('remote-mobile'), true);
-    assert.equal(classes.get('remote-mobile-portrait'), false);
+test('resets supported cameras to their widest zoom setting', async () => {
+    const App = loadAppClass({});
+    const app = Object.create(App.prototype);
+    let appliedConstraints;
+    await app.resetCameraZoom({
+        getCapabilities() {
+            return { zoom: { min: 1, max: 4 } };
+        },
+        async applyConstraints(constraints) {
+            appliedConstraints = constraints;
+        }
+    });
+
+    assert.equal(appliedConstraints.advanced[0].zoom, 1);
 });
