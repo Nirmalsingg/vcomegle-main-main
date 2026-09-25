@@ -185,7 +185,15 @@ class VComingleApp {
 
     updateRemoteVideoLayout() {
         if (!this.videoContainer) return;
+        const isPortraitRemote =
+            this.remoteVideo &&
+            this.remoteVideo.videoWidth > 0 &&
+            this.remoteVideo.videoHeight > this.remoteVideo.videoWidth;
         this.videoContainer.classList.toggle('remote-mobile', this.remoteDeviceType === 'mobile');
+        this.videoContainer.classList.toggle(
+            'remote-mobile-portrait',
+            this.remoteDeviceType === 'mobile' && isPortraitRemote
+        );
     }
 
     getGenderEntitlementToken() {
@@ -292,11 +300,15 @@ class VComingleApp {
             vcomingleMonetization &&
             typeof vcomingleMonetization.hasHDVideo === 'function' &&
             vcomingleMonetization.hasHDVideo();
+        const isMobile = this.getDeviceType() === 'mobile';
+        const preferredLongEdge = premiumVideo ? 1920 : 1280;
+        const preferredShortEdge = premiumVideo ? 1080 : 720;
         const constraints = {
-            // Prefer a sharp front camera feed without making a lower-end phone fail capture.
+            // Preserve the natural camera orientation so mobile browsers do not crop a portrait sensor into 16:9.
             video: {
-                width: { ideal: premiumVideo ? 1920 : 1280 },
-                height: { ideal: premiumVideo ? 1080 : 720 },
+                width: { ideal: isMobile ? preferredShortEdge : preferredLongEdge },
+                height: { ideal: isMobile ? preferredLongEdge : preferredShortEdge },
+                aspectRatio: { ideal: isMobile ? 9 / 16 : 16 / 9 },
                 frameRate: { ideal: 30, max: 30 },
                 facingMode: { ideal: 'user' },
                 resizeMode: 'none'
@@ -304,6 +316,8 @@ class VComingleApp {
             audio: true
         };
         this.localStream = await navigator.mediaDevices.getUserMedia(constraints);
+        const videoTrack = this.localStream.getVideoTracks()[0];
+        if (videoTrack && 'contentHint' in videoTrack) videoTrack.contentHint = 'motion';
         this.isVideoEnabled = true;
         if (this.localVideo) this.localVideo.srcObject = this.localStream;
         await this.applyCameraFilter();
