@@ -174,9 +174,9 @@ for (const connection of ['mobile-to-PC', 'PC-to-mobile', 'mobile-to-mobile', 'P
     });
 }
 
-test('video streams fill their stages and crop from the center when needed', () => {
+test('local previews fill their frame while remote streams preserve the full camera view', () => {
     assert.match(styles, /\.video-local,\s*\.video-remote\s*\{[^}]*width:\s*100%;[^}]*height:\s*100%;/s);
-    assert.match(styles, /\.video-remote\s*\{[^}]*object-fit:\s*cover;[^}]*object-position:\s*center;/s);
+    assert.match(styles, /\.video-remote\s*\{[^}]*object-fit:\s*contain;[^}]*object-position:\s*center;/s);
     assert.match(styles, /\.video-local\s*\{[^}]*object-fit:\s*cover;[^}]*object-position:\s*center;/s);
 });
 

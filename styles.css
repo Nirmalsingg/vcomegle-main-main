@@ -635,8 +635,8 @@ body {
 
 .video-remote {
     display: block;
-    /* Fill the conversation stage; portrait feeds may crop at the sides. */
-    object-fit: cover;
+    /* Preserve the complete remote frame across phone and desktop aspect ratios. */
+    object-fit: contain;
     object-position: center;
     background: #111827;
 }
