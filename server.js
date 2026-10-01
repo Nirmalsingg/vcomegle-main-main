@@ -722,7 +722,9 @@ app.get('/health', (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 
-server.listen(PORT, () => {
+// Render forwards public traffic to the port it supplies. Bind explicitly to
+// all IPv4 interfaces so the service is reachable behind its load balancer.
+server.listen(PORT, '0.0.0.0', () => {
     console.log(`VComingle server running on port ${PORT}`);
     console.log(`Open http://localhost:${PORT} in your browser`);
 

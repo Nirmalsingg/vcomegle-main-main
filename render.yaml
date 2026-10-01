@@ -5,7 +5,9 @@ services:
   - type: web
     name: vcomingle
     runtime: node
-    plan: free
+    # A Free web service spins down after idle time and can be suspended at its
+    # monthly limit, making it unsuitable for user-facing pages and crawlers.
+    plan: starter
     buildCommand: npm install
     startCommand: npm start
     healthCheckPath: /health
