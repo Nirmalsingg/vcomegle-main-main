@@ -197,6 +197,13 @@ io.on('connection', (socket) => {
     console.log('📊 Current users online:', users.size);
     console.log('⏳ Users waiting:', waitingUsers.length);
     console.log('🏠 Active rooms:', rooms.size);
+    broadcastSiteStats();
+
+    // A newly connected client may have missed the broadcast sent during its
+    // connection handshake, so let it explicitly request the current snapshot.
+    socket.on('get-stats', () => {
+        socket.emit('stats-update', getSiteStats());
+    });
 
     // User looking for a match
     socket.on('find-match', (data) => {
@@ -424,8 +431,36 @@ io.on('connection', (socket) => {
             
             users.delete(socket.id);
         }
+
+        broadcastSiteStats();
     });
 });
+
+function getSiteStats() {
+    const chattingSocketIds = new Set();
+
+    // Count unique, still-connected participants rather than incrementing and
+    // decrementing counters. This makes repeated skip/leave events idempotent.
+    for (const room of rooms.values()) {
+        for (const user of room.users) {
+            if (user && user.socket && user.socket.connected) {
+                chattingSocketIds.add(user.id);
+            }
+        }
+    }
+
+    return {
+        online: Math.max(
+            0,
+            Array.from(io.sockets.sockets.values()).filter((socket) => socket.connected).length
+        ),
+        chatting: Math.max(0, chattingSocketIds.size)
+    };
+}
+
+function broadcastSiteStats() {
+    io.emit('stats-update', getSiteStats());
+}
 
 function normalizeUserId(value) {
     const userId = String(value || '').trim();
@@ -586,6 +621,7 @@ function pairUsersInRoom(userA, userB, socketA, socketB) {
     };
 
     rooms.set(roomId, room);
+    broadcastSiteStats();
 
     const userAIsInitiator = Math.random() < 0.5;
     socketA.emit('match-found', {
@@ -623,6 +659,7 @@ function leaveRoom(userId) {
             
             rooms.delete(roomId);
             console.log(`User ${userId} left room ${roomId}`);
+            broadcastSiteStats();
             break;
         }
     }
@@ -631,13 +668,16 @@ function leaveRoom(userId) {
 // Clean up old rooms periodically
 setInterval(() => {
     const now = new Date();
+    let removedRoom = false;
     for (const [roomId, room] of rooms.entries()) {
         // Remove rooms older than 1 hour
         if (now - room.createdAt > 3600000) {
             rooms.delete(roomId);
+            removedRoom = true;
             console.log(`Cleaned up old room ${roomId}`);
         }
     }
+    if (removedRoom) broadcastSiteStats();
 }, 300000); // Check every 5 minutes
 
 function publicBaseUrl(req) {

@@ -26,7 +26,9 @@ class VComingleApp {
 
         this.initializeElements();
         this.initializeEventListeners();
-        this.updateOnlineCount();
+        this.connectToSignalingServer().catch((error) => {
+            console.warn('Live statistics are unavailable:', error?.message || error);
+        });
     }
 
     initializeElements() {
@@ -71,6 +73,7 @@ class VComingleApp {
         this.virtualGiftsPanel = document.getElementById('virtualGiftsPanel');
 
         this.onlineCount = document.getElementById('onlineCount');
+        this.chattingCount = document.getElementById('chattingCount');
         this.connectingDetail = document.getElementById('connectingDetail');
     }
 
@@ -365,6 +368,10 @@ class VComingleApp {
             this.onMatchReady();
         });
 
+        this.socket.on('stats-update', (stats) => {
+            this.updateLiveStats(stats);
+        });
+
         this.socket.on('waiting', (payload) => {
             this.showScreen('connectingScreen');
             if (payload && typeof payload.othersWaiting === 'number') {
@@ -411,6 +418,17 @@ class VComingleApp {
         });
 
         this.socketHandlersBound = true;
+        this.socket.emit('get-stats');
+    }
+
+    updateLiveStats(stats) {
+        const formatCount = (value) => {
+            const count = Number(value);
+            return Math.max(0, Number.isFinite(count) ? Math.floor(count) : 0).toLocaleString();
+        };
+
+        if (this.onlineCount) this.onlineCount.textContent = formatCount(stats && stats.online);
+        if (this.chattingCount) this.chattingCount.textContent = formatCount(stats && stats.chatting);
     }
 
     escapeHtml(text) {
@@ -1190,12 +1208,6 @@ class VComingleApp {
             }
         });
         if (screenId !== 'chatScreen') this.setGiftsOpen(false);
-    }
-
-    updateOnlineCount() {
-        const count = 800 + Math.floor(Math.random() * 4000);
-        if (this.onlineCount) this.onlineCount.textContent = count.toLocaleString();
-        setTimeout(() => this.updateOnlineCount(), 30000);
     }
 
     onStrangerDisconnected() {
