@@ -26,9 +26,6 @@ class VComingleApp {
 
         this.initializeElements();
         this.initializeEventListeners();
-        this.connectToSignalingServer().catch((error) => {
-            console.warn('Live statistics are unavailable:', error?.message || error);
-        });
     }
 
     initializeElements() {
@@ -49,11 +46,11 @@ class VComingleApp {
         this.nextBtn = document.getElementById('nextButton');
         this.stopBtn = document.getElementById('stopButton');
         this.reportBtn = document.getElementById('reportButton');
+        this.blockBtn = document.getElementById('blockButton');
         this.toggleVideoBtn = document.getElementById('toggleVideo');
         this.toggleAudioBtn = document.getElementById('toggleAudio');
         this.toggleGiftsBtn = document.getElementById('toggleGifts');
         this.cameraFilterSelect = document.getElementById('cameraFilter');
-        this.ageConfirmation = document.getElementById('ageConfirmation');
         this.reportDialog = document.getElementById('reportDialog');
         this.reportForm = document.getElementById('reportForm');
         this.reportReason = document.getElementById('reportReason');
@@ -97,6 +94,7 @@ class VComingleApp {
         this.nextBtn.addEventListener('click', () => this.nextChat());
         this.stopBtn.addEventListener('click', () => this.stopChat());
         this.reportBtn.addEventListener('click', () => this.reportUser());
+        if (this.blockBtn) this.blockBtn.addEventListener('click', () => this.blockUser());
         this.toggleVideoBtn.addEventListener('click', () => this.toggleVideo());
         this.toggleAudioBtn.addEventListener('click', () => this.toggleAudio());
         if (this.toggleGiftsBtn) {
@@ -229,9 +227,9 @@ class VComingleApp {
     }
 
     validateAgeConfirmation() {
-        if (this.ageConfirmation && !this.ageConfirmation.checked) {
-            this.showNotification('You must confirm that you are 18 or older before starting a chat.', 'error');
-            this.ageConfirmation.focus();
+        if (!window.vcomingleAuth || !window.vcomingleAuth.isEligible()) {
+            this.showNotification('Sign in with an account that has confirmed 18+ eligibility before starting a chat.', 'error');
+            window.vcomingleAuth?.show('loginPanel');
             return false;
         }
         return true;
@@ -290,6 +288,10 @@ class VComingleApp {
     }
 
     async initializeLocalMedia() {
+        if (typeof window.vcomingleRequestMediaPermissions === 'function') {
+            await window.vcomingleRequestMediaPermissions();
+        }
+
         const premiumVideo =
             typeof vcomingleMonetization !== 'undefined' &&
             vcomingleMonetization &&
@@ -342,6 +344,7 @@ class VComingleApp {
         const params = new URLSearchParams(window.location.search);
         const override = params.get('socket');
         if (override) return override;
+        if (window.VCOMINGLE_API_BASE_URL) return window.VCOMINGLE_API_BASE_URL;
         return window.location.origin;
     }
 
@@ -417,6 +420,11 @@ class VComingleApp {
             this.goHome();
         });
 
+        this.socket.on('access-denied', (payload) => {
+            this.showNotification(payload?.message || 'Chat access is unavailable for this account.', 'error');
+            this.cancelSearch();
+        });
+
         this.socketHandlersBound = true;
         this.socket.emit('get-stats');
     }
@@ -486,6 +494,7 @@ class VComingleApp {
 
             try {
                 this.socket = io(socketUrl, {
+                    auth: { token: window.vcomingleAuth ? window.vcomingleAuth.token : '' },
                     transports: ['polling', 'websocket'],
                     timeout: 20000,
                     forceNew: true,
@@ -505,6 +514,7 @@ class VComingleApp {
 
                 this.socket.on('connect_error', (error) => {
                     console.error('Socket connection error (will retry):', error?.message || error);
+                    if (error?.message === 'AUTH_REQUIRED') window.vcomingleAuth?.clearSession(true);
                 });
             } catch (error) {
                 clearTimeout(deadline);
@@ -972,6 +982,15 @@ class VComingleApp {
         this.showNotification('Your report was submitted. Thanks for helping keep VComingle safe.', 'success');
         this.cleanupSession();
         this.goHome();
+    }
+
+    blockUser() {
+        if (!this.currentRoom || !this.strangerId) return this.showNotification('There is no active chat to block.', 'error');
+        if (!confirm('Block this user? You will be disconnected and will not match again unless you unblock them.')) return;
+        if (this.socket?.connected) this.socket.emit('block-user', { roomId: this.currentRoom });
+        this.cleanupSession();
+        this.goHome();
+        this.showNotification('User blocked.', 'success');
     }
 
     toggleVideo() {
