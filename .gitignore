@@ -38,3 +38,7 @@ build/
 # Temporary files
 *.tmp
 *.temp
+
+# Runtime account records (contains password hashes and eligibility timestamps)
+data/accounts.json
+data/test-accounts.json

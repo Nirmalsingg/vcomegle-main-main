@@ -1,5 +1,5 @@
 # Render Blueprint: https://render.com/docs/blueprint-spec
-# After first deploy, set PUBLIC_URL in the dashboard to your live URL (e.g. https://vcomingle.onrender.com)
+# Set APP_BASE_URL manually in Render to the final public HTTPS origin.
 
 services:
   - type: web
@@ -11,3 +11,21 @@ services:
     buildCommand: npm install
     startCommand: npm start
     healthCheckPath: /health
+    disk:
+      name: vcomingle-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: AUTH_DATA_FILE
+        value: /var/data/accounts.json
+      # Existing services must set sync:false variables in Render's Environment UI.
+      - key: AUTH_TOKEN_SECRET
+        sync: false
+      - key: APP_BASE_URL
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false

@@ -73,6 +73,10 @@
                 <a href="/meet-new-people-online">Meet People</a>
             </nav>
             <div class="header-actions">
+                <span id="accountName" class="account-name"></span>
+                <button id="profileBtn" class="auth-header-btn hidden" type="button" data-auth-show="profilePanel">Profile</button>
+                <button id="adminBtn" class="auth-header-btn hidden" type="button" data-auth-show="adminPanel">Admin</button>
+                <button id="logoutBtn" class="auth-header-btn hidden" type="button">Log out</button>
                 <button id="premiumBtn" class="premium-btn" type="button" hidden>
                     Premium
                 </button>
@@ -84,6 +88,38 @@
 
         <!-- Main Content -->
         <main class="main-content">
+            <section id="authScreen" class="screen auth-screen" aria-live="polite">
+                <div class="auth-card">
+                    <div class="auth-brand"><span>V</span><div><strong>VComingle</strong><small>Adult-only conversations</small></div></div>
+                    <p id="authMessage" class="auth-message" role="alert"></p>
+                    <form id="loginPanel" class="auth-panel" autocomplete="on">
+                        <h1>Welcome back</h1><p>Sign in to continue chatting.</p>
+                        <label>Email<input name="email" type="email" autocomplete="email" required></label>
+                        <label>Password<div class="password-field"><input id="loginPassword" name="password" type="password" autocomplete="current-password" required><button type="button" data-password-toggle="loginPassword">Show</button></div></label>
+                        <button class="btn btn-primary" type="submit">Log in</button>
+                        <button class="auth-link" type="button" data-auth-show="forgotPanel">Forgot password?</button>
+                        <button class="auth-link" type="button" data-auth-show="resendVerificationPanel">Resend verification email</button>
+                        <p class="auth-switch">New here? <button type="button" data-auth-show="signupPanel">Create an account</button></p>
+                    </form>
+                    <form id="signupPanel" class="auth-panel hidden" autocomplete="on">
+                        <h1>Create your account</h1><p>Your account is required for safer, adult-only chat.</p>
+                        <label>Name<input name="name" type="text" minlength="2" maxlength="80" autocomplete="name" required></label>
+                        <label>Email<input name="email" type="email" autocomplete="email" required></label>
+                        <label>Password<div class="password-field"><input id="signupPassword" name="password" type="password" minlength="10" autocomplete="new-password" required><button type="button" data-password-toggle="signupPassword">Show</button></div><small>Use at least 10 characters.</small></label>
+                        <label>Confirm password<div class="password-field"><input id="signupConfirmPassword" name="confirmPassword" type="password" minlength="10" autocomplete="new-password" required><button type="button" data-password-toggle="signupConfirmPassword">Show</button></div></label>
+                        <label class="auth-age"><input name="ageConfirmed" type="checkbox" required><span>I confirm that I am 18 or older. This is a self-declaration, not identity or age verification.</span></label>
+                        <button class="btn btn-primary" type="submit">Create account</button><p class="auth-switch">Already have an account? <button type="button" data-auth-show="loginPanel">Log in</button></p>
+                    </form>
+                    <form id="resendVerificationPanel" class="auth-panel hidden"><h1>Verify your email</h1><p>Enter your email and we’ll send a fresh verification link if needed.</p><label>Email<input name="email" type="email" autocomplete="email" required></label><button class="btn btn-primary" type="submit">Resend verification email</button><p class="auth-switch"><button type="button" data-auth-show="loginPanel">Back to login</button></p></form>
+                    <form id="forgotPanel" class="auth-panel hidden"><h1>Reset password</h1><p>We’ll send reset instructions if an account exists.</p><label>Email<input name="email" type="email" autocomplete="email" required></label><button class="btn btn-primary" type="submit">Send instructions</button><p class="auth-switch"><button type="button" data-auth-show="loginPanel">Back to login</button></p></form>
+                    <section id="verifyPanel" class="auth-panel hidden"><h1>Verifying your email</h1><p>Please wait…</p></section>
+                    <form id="resetPanel" class="auth-panel hidden"><h1>Choose a new password</h1><p>Use at least 10 characters.</p><input id="resetToken" name="token" type="hidden"><label>New password<div class="password-field"><input id="resetPassword" name="password" type="password" minlength="10" autocomplete="new-password" required><button type="button" data-password-toggle="resetPassword">Show</button></div></label><button class="btn btn-primary" type="submit">Update password</button></form>
+                    <form id="agePanel" class="auth-panel hidden"><h1>Confirm eligibility</h1><p>Before chat access is enabled, please confirm your eligibility.</p><label class="auth-age"><input name="ageConfirmed" type="checkbox" required><span>I confirm that I am 18 or older. This self-declaration is not identity or actual-age verification.</span></label><button class="btn btn-primary" type="submit">Continue</button></form>
+                    <section id="profilePanel" class="auth-panel hidden"><h1>Your profile</h1><p>Your account is eligible for adult-only chat.</p><button id="blockedUsersBtn" class="btn btn-secondary" type="button" data-auth-show="blockedPanel">Blocked users</button><button id="deleteAccountBtn" class="btn btn-danger" type="button">Delete account</button><p class="auth-switch"><button type="button" data-auth-show="loginPanel">Close</button></p></section>
+                    <section id="blockedPanel" class="auth-panel hidden"><h1>Blocked users</h1><p>Blocked accounts cannot match with you.</p><div id="blockedUsersList" class="account-list"></div><p class="auth-switch"><button type="button" data-auth-show="profilePanel">Back to profile</button></p></section>
+                    <section id="adminPanel" class="auth-panel hidden"><h1>Moderation reports</h1><p>Administrator-only report review and account actions.</p><div id="adminReportsList" class="account-list"></div><p class="auth-switch"><button type="button" data-auth-show="profilePanel">Back to profile</button></p></section>
+                </div>
+            </section>
             <!-- Welcome Screen -->
             <div id="welcomeScreen" class="screen welcome-screen">
                 <div class="welcome-content">
@@ -136,10 +172,6 @@
                                 Upgrade to Premium to unlock the gender filter.
                             </div>
                         </div>
-                        <label class="age-confirmation">
-                            <input type="checkbox" id="ageConfirmation" required>
-                            <span>I confirm that I am 18 or older and agree to the <a href="/terms.html">Terms</a>, <a href="/privacy.html">Privacy Policy</a>, and <a href="/content-policy.html">Content Policy</a>.</span>
-                        </label>
                     </div>
 
                     <button type="button" id="startChat" class="btn btn-primary">Start chatting</button>
@@ -328,6 +360,7 @@
 
     <script src="monetization.js?v=upi-premium-99-20260920"></script>
     <script src="payment-system.js?v=upi-premium-99-20260920"></script>
+    <script src="auth.js?v=auth-20261011"></script>
     <script src="app.js?v=video-framing-20260926"></script>
     
     <script>

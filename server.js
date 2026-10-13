@@ -6,7 +6,9 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const path = require('path');
 const fs = require('fs');
+require('dotenv').config();
 const RewardedEntitlements = require('./rewarded-entitlements');
+const auth = require('./auth-service');
 
 let PaymentAPI = null;
 try {
@@ -48,6 +50,18 @@ app.use(helmet({
 }));
 app.use(cors());
 app.use(morgan('combined'));
+app.use(express.json({ limit: '20kb' }));
+auth.register(app, {
+    onAccountAction(account, action) {
+        if (action !== 'suspend' && action !== 'ban') return;
+        for (const socket of io.sockets.sockets.values()) {
+            if (socket.data?.account?.id === account.id) {
+                socket.emit('moderation-action', { message: action === 'ban' ? 'Your account has been banned.' : 'Your account has been suspended.' });
+                socket.disconnect(true);
+            }
+        }
+    }
+});
 
 let paymentAPI = null;
 if (PaymentAPI) {
@@ -192,6 +206,14 @@ app.get('/api/moderation/reports', (req, res) => {
 });
 
 // Socket.io connection handling
+io.use((socket, next) => {
+    const token = socket.handshake.auth && socket.handshake.auth.token;
+    const account = auth.socketAccount(token);
+    if (!account) return next(new Error('AUTH_REQUIRED'));
+    socket.data.account = account;
+    next();
+});
+
 io.on('connection', (socket) => {
     console.log('✅ User connected:', socket.id);
     console.log('📊 Current users online:', users.size);
@@ -224,7 +246,17 @@ io.on('connection', (socket) => {
             });
             return;
         }
-        const normalizedUserId = normalizeUserId(userId);
+        const account = socket.data.account;
+        if (!account || !account.ageConfirmedAt) {
+            socket.emit('access-denied', { code: 'AGE_CONFIRMATION_REQUIRED', message: 'Confirm that you are 18 or older before starting a chat.' });
+            return;
+        }
+        if (!auth.accountCanChat(account)) {
+            socket.emit('moderation-action', { message: account.bannedAt ? 'Your account has been banned.' : 'Your account is currently suspended.' });
+            socket.disconnect(true);
+            return;
+        }
+        const normalizedUserId = account.id;
         const verifiedPremium = hasServerVerifiedPremium(normalizedUserId);
         const requestedPartnerGender = normalizePartnerGender(partnerGender);
         removeWaitingUser(socket.id);
@@ -392,7 +424,7 @@ io.on('connection', (socket) => {
             if (otherUser) {
                 const reason = REPORT_REASONS.has(data.reason) ? data.reason : 'other';
                 const details = normalizeReportDetails(data.details);
-                if (data.blockUser !== false) reporter.blockedUsers.add(otherUser.id);
+                if (data.blockUser !== false) auth.blockAccount(reporter.userId, otherUser.userId);
 
                 const isNewReporter = !otherUser.reporterIds.has(socket.id);
                 otherUser.reporterIds.add(socket.id);
@@ -404,6 +436,7 @@ io.on('connection', (socket) => {
                     details,
                     createdAt: new Date().toISOString()
                 });
+                auth.createReport({ reporterId: reporter.userId, reportedId: otherUser.userId, roomId, reason, details });
                 console.log(`User ${socket.id} reported user ${otherUser.id}: ${reason}`);
 
                 if (isNewReporter && otherUser.reporterIds.size >= MODERATION_REPORT_THRESHOLD) {
@@ -417,6 +450,17 @@ io.on('connection', (socket) => {
         }
         
         leaveRoom(socket.id);
+        socket.emit('disconnected');
+    });
+
+    socket.on('block-user', (data = {}) => {
+        const room = rooms.get(data.roomId);
+        const blocker = users.get(socket.id);
+        if (!room || !blocker || !isRoomParticipant(room, socket.id)) return;
+        const otherUser = room.users.find((user) => user.id !== socket.id);
+        if (!otherUser || !auth.blockAccount(blocker.userId, otherUser.userId)) return;
+        leaveRoom(socket.id);
+        socket.emit('blocked-user', { success: true });
         socket.emit('disconnected');
     });
 
@@ -550,7 +594,7 @@ const findMatch = (user) => {
     const idx = waitingUsers.findIndex((w) => {
         const sameMode = w.textOnly === user.textOnly;
         const available = w.id !== user.id && w.socket.connected && !isUserInRoom(w.id);
-        const notBlocked = !user.blockedUsers.has(w.id) && !w.blockedUsers.has(user.id);
+        const notBlocked = !auth.accountsAreBlocked(user.socket.data.account, w.socket.data.account);
         const compatible = available && sameMode && notBlocked && gendersCompatible(user, w);
 
         console.log(
@@ -709,6 +753,14 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
+app.get('/reset-password', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+app.get('/verify-email', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
+
 // Serve policy pages
 app.get('/privacy.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'privacy.html'));
@@ -748,6 +800,12 @@ app.get('/text-chat', (req, res) => {
 
 app.get('/meet-new-people-online', (req, res) => {
     res.sendFile(path.join(__dirname, 'meet-new-people-online.html'));
+});
+
+app.use((error, req, res, next) => {
+    console.error('Request failed:', error.message);
+    if (res.headersSent) return next(error);
+    return res.status(500).json({ success: false, message: 'Unable to complete that request. Please try again.' });
 });
 
 // Health check endpoint
