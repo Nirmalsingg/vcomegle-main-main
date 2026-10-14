@@ -8,6 +8,12 @@ class VComingleMonetization {
         this.initializeMonetization();
     }
 
+    apiUrl(path) {
+        return typeof window.vcomingleApiUrl === 'function'
+            ? window.vcomingleApiUrl(path)
+            : path;
+    }
+
     getUserId() {
         // Generate or retrieve user ID
         let userId = localStorage.getItem('vcomingle_user_id');
@@ -87,7 +93,7 @@ class VComingleMonetization {
     }
 
     async createRewardedAdSession() {
-        const response = await fetch('/api/rewarded-ads/session', {
+        const response = await fetch(this.apiUrl('/api/rewarded-ads/session'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ userId: this.userId })
@@ -117,9 +123,9 @@ class VComingleMonetization {
     }
 
     async getRewardedAdSession(sessionId) {
-        const response = await fetch(
+        const response = await fetch(this.apiUrl(
             `/api/rewarded-ads/${encodeURIComponent(sessionId)}/status?userId=${encodeURIComponent(this.userId)}`
-        );
+        ));
         const data = await response.json();
         if (!response.ok || !data.success || !data.session) {
             throw new Error(data.message || 'Could not check rewarded ad status.');

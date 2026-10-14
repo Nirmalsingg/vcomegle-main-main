@@ -50,6 +50,14 @@ app.use(helmet({
 }));
 app.use(cors());
 app.use(morgan('combined'));
+app.use((req, res, next) => {
+    if (req.method !== 'GET') return next();
+    const sensitive = ['password', 'confirmPassword', 'token', 'email'];
+    if (!sensitive.some((key) => Object.prototype.hasOwnProperty.call(req.query, key))) return next();
+    const url = new URL(`${req.protocol}://${req.get('host') || 'localhost'}${req.originalUrl}`);
+    sensitive.forEach((key) => url.searchParams.delete(key));
+    return res.redirect(303, `${url.pathname}${url.search}${url.hash}`);
+});
 app.use(express.json({ limit: '20kb' }));
 auth.register(app, {
     onAccountAction(account, action) {
@@ -209,7 +217,9 @@ app.get('/api/moderation/reports', (req, res) => {
 io.use((socket, next) => {
     const token = socket.handshake.auth && socket.handshake.auth.token;
     const account = auth.socketAccount(token);
-    if (!account) return next(new Error('AUTH_REQUIRED'));
+    // Browser visitors retain the original anonymous matching experience.
+    // The Android client explicitly identifies itself and must authenticate.
+    if (!account && socket.handshake.auth?.client === 'native') return next(new Error('AUTH_REQUIRED'));
     socket.data.account = account;
     next();
 });
@@ -247,22 +257,23 @@ io.on('connection', (socket) => {
             return;
         }
         const account = socket.data.account;
-        if (!account || !account.ageConfirmedAt) {
+        if (account && !account.ageConfirmedAt) {
             socket.emit('access-denied', { code: 'AGE_CONFIRMATION_REQUIRED', message: 'Confirm that you are 18 or older before starting a chat.' });
             return;
         }
-        if (!auth.accountCanChat(account)) {
+        if (account && !auth.accountCanChat(account)) {
             socket.emit('moderation-action', { message: account.bannedAt ? 'Your account has been banned.' : 'Your account is currently suspended.' });
             socket.disconnect(true);
             return;
         }
-        const normalizedUserId = account.id;
+        const normalizedUserId = account ? account.id : `guest:${socket.id}`;
         const verifiedPremium = hasServerVerifiedPremium(normalizedUserId);
         const requestedPartnerGender = normalizePartnerGender(partnerGender);
         removeWaitingUser(socket.id);
         const user = {
             id: socket.id,
             userId: normalizedUserId,
+            accountId: account ? account.id : null,
             textOnly: !!textOnly,
             interests: interests ? interests.split(',').map(i => i.trim()) : [],
             selfGender: normalizeSelfGender(selfGender),
@@ -424,7 +435,10 @@ io.on('connection', (socket) => {
             if (otherUser) {
                 const reason = REPORT_REASONS.has(data.reason) ? data.reason : 'other';
                 const details = normalizeReportDetails(data.details);
-                if (data.blockUser !== false) auth.blockAccount(reporter.userId, otherUser.userId);
+                if (data.blockUser !== false) {
+                    if (socket.data.account && otherUser.accountId) auth.blockAccount(reporter.userId, otherUser.userId);
+                    else reporter.blockedUsers.add(otherUser.userId);
+                }
 
                 const isNewReporter = !otherUser.reporterIds.has(socket.id);
                 otherUser.reporterIds.add(socket.id);
@@ -436,7 +450,9 @@ io.on('connection', (socket) => {
                     details,
                     createdAt: new Date().toISOString()
                 });
-                auth.createReport({ reporterId: reporter.userId, reportedId: otherUser.userId, roomId, reason, details });
+                if (socket.data.account && otherUser.accountId) {
+                    auth.createReport({ reporterId: reporter.userId, reportedId: otherUser.userId, roomId, reason, details });
+                }
                 console.log(`User ${socket.id} reported user ${otherUser.id}: ${reason}`);
 
                 if (isNewReporter && otherUser.reporterIds.size >= MODERATION_REPORT_THRESHOLD) {
@@ -458,7 +474,9 @@ io.on('connection', (socket) => {
         const blocker = users.get(socket.id);
         if (!room || !blocker || !isRoomParticipant(room, socket.id)) return;
         const otherUser = room.users.find((user) => user.id !== socket.id);
-        if (!otherUser || !auth.blockAccount(blocker.userId, otherUser.userId)) return;
+        if (!otherUser) return;
+        if (socket.data.account && otherUser.accountId) auth.blockAccount(blocker.userId, otherUser.userId);
+        else blocker.blockedUsers.add(otherUser.userId);
         leaveRoom(socket.id);
         socket.emit('blocked-user', { success: true });
         socket.emit('disconnected');
