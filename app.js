@@ -227,7 +227,7 @@ class VComingleApp {
     }
 
     validateAgeConfirmation() {
-        if (!window.vcomingleAuth || !window.vcomingleAuth.isEligible()) {
+        if (window.VCOMINGLE_REQUIRE_AUTH === true && (!window.vcomingleAuth || !window.vcomingleAuth.isEligible())) {
             this.showNotification('Sign in with an account that has confirmed 18+ eligibility before starting a chat.', 'error');
             window.vcomingleAuth?.show('loginPanel');
             return false;
@@ -492,42 +492,51 @@ class VComingleApp {
                 }
             }, CONNECT_MS);
 
-            try {
-                this.socket = io(socketUrl, {
-                    auth: { token: window.vcomingleAuth ? window.vcomingleAuth.token : '' },
-                    transports: ['polling', 'websocket'],
-                    timeout: 20000,
-                    forceNew: true,
-                    reconnection: true,
-                    reconnectionAttempts: 10,
-                    reconnectionDelay: 800
-                });
+            const connect = async () => {
+                try {
+                    if (window.vcomingleAuthReady) {
+                        await window.vcomingleAuthReady;
+                    }
+                    this.socket = io(socketUrl, {
+                        auth: {
+                            token: window.vcomingleAuth ? window.vcomingleAuth.token : '',
+                            client: window.VCOMINGLE_REQUIRE_AUTH === true ? 'native' : 'web'
+                        },
+                        transports: ['polling', 'websocket'],
+                        timeout: 20000,
+                        forceNew: true,
+                        reconnection: true,
+                        reconnectionAttempts: 10,
+                        reconnectionDelay: 800
+                    });
 
-                this.socket.once('connect', () => {
-                    if (settled) return;
-                    settled = true;
-                    clearTimeout(deadline);
-                    console.log('Connected to signaling server:', socketUrl);
-                    this.bindSocketHandlers();
-                    resolve();
-                });
-
-                this.socket.on('connect_error', (error) => {
-                    console.error('Socket connection error (will retry):', error?.message || error);
-                    if (error?.message === 'AUTH_REQUIRED') window.vcomingleAuth?.clearSession(true);
-                });
-            } catch (error) {
-                clearTimeout(deadline);
-                if (!settled) {
-                    settled = true;
-                    if (allowDemo) {
-                        this.fallbackToDemoMode();
+                    this.socket.once('connect', () => {
+                        if (settled) return;
+                        settled = true;
+                        clearTimeout(deadline);
+                        console.log('Connected to signaling server:', socketUrl);
+                        this.bindSocketHandlers();
                         resolve();
-                    } else {
-                        reject(error);
+                    });
+
+                    this.socket.on('connect_error', (error) => {
+                        console.error('Socket connection error (will retry):', error?.message || error);
+                        if (error?.message === 'AUTH_REQUIRED') window.vcomingleAuth?.clearSession(true);
+                    });
+                } catch (error) {
+                    clearTimeout(deadline);
+                    if (!settled) {
+                        settled = true;
+                        if (allowDemo) {
+                            this.fallbackToDemoMode();
+                            resolve();
+                        } else {
+                            reject(error);
+                        }
                     }
                 }
-            }
+            };
+            connect();
         });
     }
 

@@ -1,0 +1,8 @@
+{
+  "appId": "in.vcomingle.app",
+  "appName": "VComingle",
+  "webDir": "www",
+  "android": {
+    "allowMixedContent": false
+  }
+}

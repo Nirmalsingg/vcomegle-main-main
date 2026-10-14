@@ -1,5 +1,6 @@
 # Dependencies
 node_modules/
+www/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -31,9 +32,15 @@ logs
 # Coverage directory used by tools like istanbul
 coverage/
 
+# Local tooling (bundled JDK, etc.)
+.tools/
+
 # Build outputs
 dist/
 build/
+android/keystore.properties
+android/*.jks
+android/*.keystore
 
 # Temporary files
 *.tmp

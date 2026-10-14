@@ -1,26 +1,33 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const http = require('node:http');
-const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
 const express = require('express');
 
-function request(port, route, body, method = 'POST', headers = {}) {
+function request(app, route, body, method = 'POST', headers = {}) {
     return new Promise((resolve, reject) => {
-        const payload = body === undefined ? '' : JSON.stringify(body);
-        const req = http.request({ port, path: route, method, headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload), ...headers } }, (res) => {
-            let raw = '';
-            res.on('data', (chunk) => { raw += chunk; });
-            res.on('end', () => resolve({ status: res.statusCode, body: raw ? JSON.parse(raw) : {} }));
-        });
-        req.on('error', reject);
-        req.end(payload);
+        const layer = app._router.stack.find((entry) => entry.route && entry.route.path === route && entry.route.methods[method.toLowerCase()]);
+        if (!layer) return reject(new Error(`Route not found: ${method} ${route}`));
+        const req = { body, ip: '127.0.0.1', path: route, get: (name) => headers[name] || headers[name.toLowerCase()] || '' };
+        const res = {
+            statusCode: 200,
+            status(code) { this.statusCode = code; return this; },
+            json(value) { resolve({ status: this.statusCode, body: value }); return this; },
+            end() { resolve({ status: this.statusCode, body: {} }); return this; }
+        };
+        let index = 0;
+        const next = (error) => {
+            if (error) return reject(error);
+            const handler = layer.route.stack[index++]?.handle;
+            if (!handler) return;
+            Promise.resolve(handler(req, res, next)).catch(reject);
+        };
+        next();
     });
 }
 
 test('registration, verification, login, and password reset work without issuing an unverified session', async (t) => {
-    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'vcomingle-auth-'));
+    const directory = fs.mkdtempSync(path.join(__dirname, '.auth-fixture-'));
     const dataFile = path.join(directory, 'accounts.json');
     const originalFetch = global.fetch;
     const sent = [];
@@ -43,43 +50,40 @@ test('registration, verification, login, and password reset work without issuing
     app.use(express.json());
     auth.register(app);
     app.use((error, req, res, next) => res.status(500).json({ message: error.message }));
-    const server = await new Promise((resolve) => { const instance = app.listen(0, () => resolve(instance)); });
     t.after(() => {
         global.fetch = originalFetch;
         delete require.cache[require.resolve('../auth-service')];
-        server.close();
         fs.rmSync(directory, { recursive: true, force: true });
     });
-    const port = server.address().port;
     const credentials = { name: 'Test User', email: 'test@example.com', password: 'a secure test password', ageConfirmed: true };
 
-    let response = await request(port, '/api/auth/register', credentials);
+    let response = await request(app, '/api/auth/register', credentials);
     assert.equal(response.status, 201);
     assert.equal(response.body.token, undefined);
     assert.equal(sent.length, 1);
     const verificationToken = new URL(sent[0].html.match(/href="([^"]+)"/)[1]).hash.slice('#token='.length);
 
-    response = await request(port, '/api/auth/login', credentials);
+    response = await request(app, '/api/auth/login', credentials);
     assert.equal(response.status, 403);
     assert.equal(response.body.code, 'EMAIL_VERIFICATION_REQUIRED');
 
-    response = await request(port, '/api/auth/verify-email', { token: verificationToken });
+    response = await request(app, '/api/auth/verify-email', { token: verificationToken });
     assert.equal(response.status, 200);
-    response = await request(port, '/api/auth/login', credentials);
+    response = await request(app, '/api/auth/login', credentials);
     assert.equal(response.status, 200);
     assert.ok(response.body.token);
     const originalSessionToken = response.body.token;
 
-    response = await request(port, '/api/auth/forgot-password', { email: credentials.email });
+    response = await request(app, '/api/auth/forgot-password', { email: credentials.email });
     assert.equal(response.status, 200);
     assert.equal(sent.length, 2);
     const resetToken = new URL(sent[1].html.match(/href="([^"]+)"/)[1]).hash.slice('#token='.length);
-    response = await request(port, '/api/auth/reset-password', { token: resetToken, password: 'an even safer new password' });
+    response = await request(app, '/api/auth/reset-password', { token: resetToken, password: 'an even safer new password' });
     assert.equal(response.status, 200);
-    response = await request(port, '/api/auth/me', undefined, 'GET', { Authorization: `Bearer ${originalSessionToken}` });
+    response = await request(app, '/api/auth/me', undefined, 'GET', { Authorization: `Bearer ${originalSessionToken}` });
     assert.equal(response.status, 401);
-    response = await request(port, '/api/auth/login', credentials);
+    response = await request(app, '/api/auth/login', credentials);
     assert.equal(response.status, 401);
-    response = await request(port, '/api/auth/login', { email: credentials.email, password: 'an even safer new password' });
+    response = await request(app, '/api/auth/login', { email: credentials.email, password: 'an even safer new password' });
     assert.equal(response.status, 200);
 });

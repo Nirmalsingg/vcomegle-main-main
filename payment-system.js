@@ -6,6 +6,12 @@ class VCominglePaymentSystem {
         this.pollTimer = null;
     }
 
+    apiUrl(path) {
+        return typeof window.vcomingleApiUrl === 'function'
+            ? window.vcomingleApiUrl(path)
+            : path;
+    }
+
     initialize() {
         this.setupPaymentButtons();
     }
@@ -105,7 +111,7 @@ class VCominglePaymentSystem {
     }
 
     async createUPIOrder() {
-        const response = await fetch('/api/payments/upi-order', {
+        const response = await fetch(this.apiUrl('/api/payments/upi-order'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -187,7 +193,7 @@ class VCominglePaymentSystem {
 
     async checkPaymentStatus(referenceId) {
         try {
-            const response = await fetch(`/api/payments/${encodeURIComponent(referenceId)}/status`);
+            const response = await fetch(this.apiUrl(`/api/payments/${encodeURIComponent(referenceId)}/status`));
             const data = await response.json();
             if (!response.ok || !data.success || !data.payment) return;
 

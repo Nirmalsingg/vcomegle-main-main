@@ -1,6 +1,7 @@
 (function () {
     const api = (path) => window.vcomingleApiUrl ? window.vcomingleApiUrl(path) : path;
     const key = 'vcomingle.auth.token';
+    const requiresAuth = () => window.VCOMINGLE_REQUIRE_AUTH === true;
     const nativeStore = () => window.Capacitor?.Plugins?.SecureSessionStorage;
     async function getToken() {
         const plugin = nativeStore();
@@ -43,7 +44,7 @@
             this.token = ''; this.account = null; await removeToken(); this.render();
             if (expired) this.message('Your session expired. Please sign in again.', 'error');
         }
-        isEligible() { return Boolean(this.account?.ageEligible); }
+        isEligible() { return !requiresAuth() || Boolean(this.account?.ageEligible); }
         message(text, type = 'error') { const box = document.getElementById('authMessage'); if (box) { box.textContent = text; box.className = `auth-message ${type}`; } }
         show(panel) {
             document.querySelectorAll('.auth-panel').forEach((item) => item.classList.toggle('hidden', item.id !== panel));
@@ -51,13 +52,14 @@
         }
         render() {
             const signedIn = Boolean(this.account);
-            document.getElementById('authScreen')?.classList.toggle('hidden', signedIn);
-            document.getElementById('welcomeScreen')?.classList.toggle('hidden', !signedIn);
+            const gateWithAuth = requiresAuth();
+            document.getElementById('authScreen')?.classList.toggle('hidden', !gateWithAuth || signedIn);
+            document.getElementById('welcomeScreen')?.classList.toggle('hidden', gateWithAuth && !signedIn);
             const label = document.getElementById('accountName'); if (label) label.textContent = signedIn ? this.account.name : '';
             document.getElementById('logoutBtn')?.classList.toggle('hidden', !signedIn);
             document.getElementById('profileBtn')?.classList.toggle('hidden', !signedIn);
             document.getElementById('adminBtn')?.classList.toggle('hidden', !this.account?.isAdmin);
-            if (!signedIn) this.show('loginPanel');
+            if (gateWithAuth && !signedIn) this.show('loginPanel');
         }
         async boot() { await this.restore(); this.render(); if (this.account && !this.isEligible()) this.show('agePanel'); }
     }
@@ -70,7 +72,7 @@
         const auth = window.vcomingleAuth;
         document.querySelectorAll('[data-auth-show]').forEach((button) => button.addEventListener('click', () => { auth.message(''); auth.show(button.dataset.authShow); if (button.dataset.authShow === 'blockedPanel') loadBlocks(auth); if (button.dataset.authShow === 'adminPanel') loadReports(auth); }));
         document.querySelectorAll('[data-password-toggle]').forEach((button) => button.addEventListener('click', () => { const input = document.getElementById(button.dataset.passwordToggle); input.type = input.type === 'password' ? 'text' : 'password'; button.textContent = input.type === 'password' ? 'Show' : 'Hide'; }));
-        document.getElementById('signupForm')?.addEventListener('submit', async (event) => {
+        document.getElementById('signupPanel')?.addEventListener('submit', async (event) => {
             event.preventDefault(); const form = event.currentTarget; const data = new FormData(form);
             if (data.get('password') !== data.get('confirmPassword')) return auth.message('Passwords do not match.');
             if (!data.get('ageConfirmed')) return auth.message('You must explicitly confirm that you are 18 or older.');
@@ -78,12 +80,12 @@
             try { const result = await auth.request('/api/auth/register', { method: 'POST', body: JSON.stringify({ name: data.get('name'), email: data.get('email'), password: data.get('password'), ageConfirmed: true }) }); form.reset(); auth.message(result.message, 'success'); auth.show('loginPanel'); }
             catch (error) { auth.message(error.message); } finally { setBusy(form, false); }
         });
-        document.getElementById('loginForm')?.addEventListener('submit', async (event) => {
+        document.getElementById('loginPanel')?.addEventListener('submit', async (event) => {
             event.preventDefault(); const form = event.currentTarget; const data = new FormData(form); setBusy(form, true); auth.message('');
             try { await auth.saveSession(await auth.request('/api/auth/login', { method: 'POST', body: JSON.stringify({ email: data.get('email'), password: data.get('password') }) })); form.reset(); }
             catch (error) { auth.message(error.message); } finally { setBusy(form, false); }
         });
-        document.getElementById('forgotForm')?.addEventListener('submit', async (event) => {
+        document.getElementById('forgotPanel')?.addEventListener('submit', async (event) => {
             event.preventDefault(); const form = event.currentTarget; setBusy(form, true); auth.message('');
             try { const result = await auth.request('/api/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email: new FormData(form).get('email') }) }); auth.message(result.message, 'success'); }
             catch (error) { auth.message(error.message); } finally { setBusy(form, false); }
@@ -105,14 +107,26 @@
         });
         document.getElementById('logoutBtn')?.addEventListener('click', () => auth.clearSession());
         document.getElementById('deleteAccountBtn')?.addEventListener('click', async () => { if (!confirm('Delete your account permanently? This cannot be undone.')) return; try { await auth.request('/api/auth/account', { method: 'DELETE' }); await auth.clearSession(); } catch (error) { auth.message(error.message); } });
-        auth.boot().then(async () => {
-            const token = new URLSearchParams(location.hash.slice(1)).get('token') || new URLSearchParams(location.search).get('token');
-            if (!auth.account && location.pathname === '/verify-email') {
+        window.vcomingleAuthReady = auth.boot().then(async () => {
+            const hashParams = new URLSearchParams(location.hash.slice(1));
+            const queryParams = new URLSearchParams(location.search);
+            const token = hashParams.get('token') || queryParams.get('token');
+            if (queryParams.has('token') || queryParams.has('password') || queryParams.has('email')) {
+                const clean = `${location.pathname}${location.hash}`;
+                history.replaceState(null, '', clean || '/');
+            }
+            const onVerifyPath = location.pathname === '/verify-email' || location.pathname.endsWith('/verify-email');
+            const onResetPath = location.pathname === '/reset-password' || location.pathname.endsWith('/reset-password');
+            if (!auth.account && onVerifyPath) {
                 auth.show('verifyPanel');
                 if (!token) return auth.message('This verification link is invalid or incomplete. Request a new one.');
                 try { const result = await auth.request('/api/auth/verify-email', { method: 'POST', body: JSON.stringify({ token }) }); history.replaceState(null, '', '/'); auth.message(result.message, 'success'); auth.show('loginPanel'); }
                 catch (error) { auth.message(error.message); auth.show('resendVerificationPanel'); }
-            } else if (!auth.account && location.pathname === '/reset-password' && token) { document.getElementById('resetToken').value = token; auth.show('resetPanel'); }
+            } else if (!auth.account && onResetPath && token) {
+                document.getElementById('resetToken').value = token;
+                auth.show('resetPanel');
+                history.replaceState(null, '', location.pathname);
+            }
         });
     });
 })();
